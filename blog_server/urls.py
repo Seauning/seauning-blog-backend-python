@@ -15,7 +15,22 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from django.conf.urls import include
+from django.conf import settings
+from django.conf.urls.static import static
+from django.urls import register_converter
+
+from utils.converters import UsernameConverter
+
+# 注册用户名规则，规则名为(username)
+register_converter(UsernameConverter, 'username')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    # 因为在每个子应用都放在apps中，因此此处需要用apps来获取子应用
+    path('', include('apps.users.urls')),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL,
+                          document_root=settings.MEDIA_ROOT)

@@ -36,7 +36,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     # 自定义模块
-    'apps.users'
+    'apps.users'    # 用户
 ]
 
 MIDDLEWARE = [
@@ -119,7 +119,14 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
-STATIC_URL = '/static/'
+# 访问静态文件的URL前缀
+STATIC_URL = '/static/'     # 在模板文件里想要调用静态资源需加上static前缀
+# 配置静态资源目录
+STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+
+MEDIA_URL = '/media/'       # 同STATIC_URL
+MEDIA_ROOT = [os.path.join(BASE_DIR, 'media')]
+
 
 '''
 将 session 保存在 redis 中

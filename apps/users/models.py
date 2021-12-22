@@ -26,9 +26,22 @@ from django.contrib.auth.models import AbstractUser
 '''
 
 
+# 用户头像的路径函数
+def user_directory_path(instance, filename):
+    # file will be uploaded to MEDIA_ROOT/uploads/userAvatar/user_<id>/日期/<filename>
+    return 'uploads/userAvatar/user_{0}/%Y/%m/%d/{1}'.format(instance.user.id, filename)
+
+
 class User(AbstractUser):
     # 手机号码最长11位，且唯一
     mobile = models.CharField(max_length=11, unique=True, verbose_name='手机号')
+    # 头像
+    avatarPath = models.ImageField(upload_to=user_directory_path,
+                                   max_length=300,
+                                   blank=True,
+                                   null=True,
+                                   default='upload/userAvatar/default.png',
+                                   verbose_name='头像')
 
     class Meta:
         db_table = 'tb_users'  # 创建的数据表名
