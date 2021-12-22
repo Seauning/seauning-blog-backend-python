@@ -139,4 +139,4 @@ cython_debug/
 
 # define_by_seauning
 # .idea/*
-blog_server/.idea/*
+.idea/*
