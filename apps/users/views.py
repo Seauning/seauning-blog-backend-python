@@ -102,6 +102,7 @@ class RegisterUser(View):
             }
     """
 
+    # 检查验证码
     def checkverifyCode(self, verifyCode):
         return True
 
@@ -116,28 +117,32 @@ class RegisterUser(View):
         phone = bodyDict.get('phone')
         verifyCode = bodyDict.get('verifyCode')
         avatar = bodyDict.get('avatar')
-
         # 3.验证数据
         # all中的元素只要是None或者False则返回False
         if not all([username, password, phone, verifyCode, avatar]):
             return JsonResponse({'code': 400, 'errmsg': 'params err'})
-
+        # 合法性校验(用户名)
         if not re.match('.{2,6}', username):
             return JsonResponse({'code': 400, 'errmsg': 'uname format err'})
-
+        # 重复性校验(用户名)
         if User.objects.filter(username=username).count() != 0:
             return JsonResponse({'code': 400, 'errmsg': 'uname multiple'})
-
+        # 合法性校验(密码)
+        if not re.match('.{6,20}', password):
+            return JsonResponse({'code': 400, 'errmsg': 'passwd format err'})
+        # 合法性校验(手机号)
         if not re.match('1(?:3\\d|4[4-9]|5[0-35-9]|6[67]|7[013-8]|8\\d|9\\d)\\d{8}', phone):
             return JsonResponse({'code': 400, 'errmsg': 'phone format err'})
-
+        # 重复性校验(手机号)
         if User.objects.filter(mobile=phone).count() != 0:
             return JsonResponse({'code': 400, 'errmsg': 'phone multiple'})
-
+        # 手机验证码校验
         if not self.checkverifyCode(verifyCode):
             return JsonResponse({'code': 400, 'errmsg': 'valid err'})
-
-        # 4.创建数据插入数据表
-        user = User(username=username, password=password, mobile=phone, avatarPath=avatar)
+        # 4.创建用户插入用户表
+        # 此方法密码无加密
+        # user = User(username=username, password=password, mobile=phone, avatarPath=avatar)
+        # 此方法会加密密码
+        user = User.objects.create_user(username=username, password=password, mobile=phone, avatarPath=avatar)
         user.save()
         return JsonResponse({'code': 0, 'errmsg': 'ok'})
