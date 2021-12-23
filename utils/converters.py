@@ -7,12 +7,3 @@ class UsernameConverter:
 
     def to_python(self, value):
         return str(value)
-
-
-class PhoneConverter:
-    """自定义路由转换器去匹配手机号"""
-    # 定义匹配手机号的正则表达式
-    regex = '1(?:3\\d|4[4-9]|5[0-35-9]|6[67]|7[013-8]|8\\d|9\\d)\\d{8}'
-
-    def to_python(self, value):
-        return str(value)
