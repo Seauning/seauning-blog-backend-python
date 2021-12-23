@@ -22,7 +22,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = 'wvmi2k#r+oc9s)71bd&9l*sp)5(5$3t4@ncw8ld1w7lx*b_xe6'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = True    # True表示开发模型，在上线后应改为false
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'www.seauning.site']
 
@@ -35,7 +35,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'corsheaders',  # 跨域应用
+    'corsheaders',  # 跨域应用，位置没关系
     # 自定义模块
     'apps.users'    # 用户
 ]

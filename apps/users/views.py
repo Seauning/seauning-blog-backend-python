@@ -74,6 +74,7 @@ class PhoneCountView(View):
         :return: JSON
         """
         regex = '1(?:3\\d|4[4-9]|5[0-35-9]|6[67]|7[013-8]|8\\d|9\\d)\\d{8}'
+        # 需要添加手机号码匹配不正确的情况，让前端知道手机号码格式错误，需要提醒用户进行更改
         if not re.match(regex, phone):
             return JsonResponse({'code': 1, 'errmsg': '手机号不正确'})
 
