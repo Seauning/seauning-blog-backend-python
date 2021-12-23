@@ -142,9 +142,15 @@ class RegisterUser(View):
         # 4.创建用户插入用户表
         # 此方法密码无加密
         # user = User(username=username, password=password, mobile=phone, avatarPath=avatar)
+        # user.save()
         # 此方法会加密密码
         user = User.objects.create_user(username=username, password=password, mobile=phone, avatarPath=avatar)
-        user.save()
+
+        # 5.状态保持(本项目中不在注册后保持状态，此处仅示例)
+        # from django.contrib.auth import login
+        # # params:request,user
+        # login(request, user)
+
         return JsonResponse({'code': 0, 'errmsg': 'ok'})
 
     '''

@@ -22,7 +22,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = 'wvmi2k#r+oc9s)71bd&9l*sp)5(5$3t4@ncw8ld1w7lx*b_xe6'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True    # True表示开发模型，在上线后应改为false
+DEBUG = True  # True表示开发模型，在上线后应改为false
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'www.seauning.site']
 
@@ -37,7 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',  # 跨域应用，位置没关系
     # 自定义模块
-    'apps.users'    # 用户
+    'apps.users'  # 用户
 ]
 
 MIDDLEWARE = [
@@ -123,13 +123,12 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
 # 访问静态文件的URL前缀
-STATIC_URL = '/static/'     # 在模板文件里想要调用静态资源需加上static前缀
+STATIC_URL = '/static/'  # 在模板文件里想要调用静态资源需加上static前缀
 # 配置静态资源目录
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 
-MEDIA_URL = '/media/'       # 同STATIC_URL
+MEDIA_URL = '/media/'  # 同STATIC_URL
 MEDIA_ROOT = [os.path.join(BASE_DIR, 'media')]
-
 
 '''
 将 session 保存在 redis 中
@@ -146,6 +145,13 @@ CACHES = {
     "session": {  # session
         "BACKEND": "django_redis.cache.RedisCache",
         "LOCATION": "redis://127.0.0.1:6379/1",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    },
+    "code": {  # 验证码
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/2",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }
@@ -196,13 +202,11 @@ LOGGING = {
     }
 }
 
-
 # 用户模型覆盖
 # 通过AUTH_USER_MODEL设置，指向自定义的模型
 # 这个点式路径包含Django应用的名称(必须位于INSTALLED_APPS中)，和要作用User模型的Django模型的名称
 # 指定本项目用户模型类
 AUTH_USER_MODEL = 'users.User'
-
 
 # 白名单 CORS
 # CORS_ORIGIN_WHITELIST（旧的写法）
