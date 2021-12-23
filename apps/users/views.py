@@ -1,5 +1,7 @@
 import json
+import os
 import re
+import time
 
 from django.views import View
 from apps.users.models import User
@@ -62,7 +64,7 @@ class PhoneCountView(View):
         响应；
             JSON格式数据
             {
-            code:0/1,           # 状态码,0表示成功，1表示失败
+            code:0/400,           # 状态码,0表示成功，400表示数据错误
             errmsg: ok，        # 错误信息
             count:0/1,          # 手机号个数
             }
@@ -77,13 +79,43 @@ class PhoneCountView(View):
         regex = '^1(?:3\\d|4[4-9]|5[0-35-9]|6[67]|7[013-8]|8\\d|9\\d)\\d{8}$'
         # 需要添加手机号码匹配不正确的情况，让前端知道手机号码格式错误，需要提醒用户进行更改
         if not re.match(regex, phone):
-            return JsonResponse({'code': 1, 'errmsg': 'phone multiple'})
+            return JsonResponse({'code': 400, 'errmsg': 'phone format err'})
 
         count = User.objects.filter(mobile=phone).count()
         return JsonResponse({'code': 0, 'errmsg': 'ok', 'count': count})
 
 
-class RegisterUser(View):
+class AvatarUploadView(View):
+    """
+        该接口仅用于upload组件上传图片时的接口
+    前端:
+        上传
+    后端：
+        请求：接受信息
+        路由： POST upload/avatar/
+        响应；
+            JSON格式数据
+            {
+            code:0,            # 状态码
+            errmsg: ok，        # 错误信息
+            }
+    """
+
+    def post(self, request):
+        # avatarFile = request.FILES.getlist('file', None)
+        # avatarData = ''
+        # # 拿出头像信息
+        # for content in avatarFile[0].chunks():
+        #     avatarData += content
+        # # 保存在session中
+        # request.session['avatar'] = avatarData
+        return JsonResponse({
+            'code': 0,
+            'errmsg': 'ok'
+        })
+
+
+class RegisterUserView(View):
     """
     注册用户
     前端:
@@ -103,8 +135,20 @@ class RegisterUser(View):
     """
 
     # 检查验证码
-    def checkverifyCode(self, verifyCode):
-        return True
+    # 返回值 -1:过期，0:不一致,1正确
+    def checkverifyCode(self, verifyCode, phone):
+        # 判断短信验证码是否正确：跟图形验证码的验证一样的逻辑
+        # 提取服务端存储的短信验证码：以前怎么存储，现在就怎么提取
+        from django_redis import get_redis_connection
+        redisCli = get_redis_connection('code')
+        smsCodeRedis = redisCli.get('sms_{}'.format(phone))
+        # 判断短信验证码是否过期
+        if not smsCodeRedis:
+            return -1
+        # 对比用户输入的和服务端存储的短信验证码是否一致
+        if verifyCode != smsCodeRedis.decode():
+            return 0
+        return 1
 
     def post(self, request):
         # 1.接收请求（JSON数据）
@@ -116,10 +160,10 @@ class RegisterUser(View):
         password = bodyDict.get('password')
         phone = bodyDict.get('phone')
         verifyCode = bodyDict.get('verifyCode')
-        avatar = bodyDict.get('avatar')
+        avatarFileInfo = bodyDict.get('avatar')
         # 3.验证数据
         # all中的元素只要是None或者False则返回False
-        if not all([username, password, phone, verifyCode, avatar]):
+        if not all([username, password, phone, verifyCode, avatarFileInfo]):
             return JsonResponse({'code': 400, 'errmsg': 'params err'})
         # 合法性校验(用户名)
         if not re.match('^(.){2,6}$', username):
@@ -137,15 +181,39 @@ class RegisterUser(View):
         if User.objects.filter(mobile=phone).count() != 0:
             return JsonResponse({'code': 400, 'errmsg': 'phone multiple'})
         # 手机验证码校验
-        if not self.checkverifyCode(verifyCode):
+        verifyRes = True or self.checkverifyCode(verifyCode, phone)
+        if verifyRes == -1:
+            return JsonResponse({'code': 400, 'errmsg': 'valid dead'})
+        elif verifyRes == 0:
             return JsonResponse({'code': 400, 'errmsg': 'valid err'})
         # 4.创建用户插入用户表
         # 此方法密码无加密
         # user = User(username=username, password=password, mobile=phone, avatarPath=avatar)
         # user.save()
         # 此方法会加密密码
-        user = User.objects.create_user(username=username, password=password, mobile=phone, avatarPath=avatar)
+        user = User.objects.create_user(username=username, password=password, mobile=phone)
+        """""""""""(此部分保存图片暂不能解决，明天再查阅具体方法)
+        # try:
+        from blog_server import settings
+        mediapath = settings.MEDIA_ROOT
+        userpath = mediapath[0] + '\\uploads\\userAvatar\\user_{}'.format(user.id)
+        if not os.path.exists(userpath):
+            os.mkdir(userpath)
+        timepath = userpath + time.strftime('\\%Y_%m_%d', time.localtime())
+        if not os.path.exists(timepath):
+            os.mkdir(timepath)
+        avatarPath = timepath + '\\{}'.format(avatarFileInfo['name'])
+        
+        with open(avatarPath, 'wb') as f:
+            avataData = request.get(avatarFileInfo['url'])
+            print(avataData)
+            # for content in avatarFileInfo.chunks():
+            #     f.write(content)
+        user.update(avatarPath='http://www.localhost.com:8082' + avatarPath)
 
+        # except Exception as e:
+        #     return JsonResponse({'code': 400, 'errmsg': 'upload failed'})
+        """""""""""
         # 5.状态保持(本项目中不在注册后保持状态，此处仅示例)
         # from django.contrib.auth import login
         # # params:request,user
