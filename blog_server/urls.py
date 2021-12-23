@@ -20,10 +20,12 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import register_converter
 
-from utils.converters import UsernameConverter
+from utils.converters import UsernameConverter, PhoneConverter
 
 # 注册用户名规则，规则名为(username)
 register_converter(UsernameConverter, 'username')
+# 注册手机号规则，规则名为(phone)
+register_converter(PhoneConverter, 'phone')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
