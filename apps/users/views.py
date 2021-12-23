@@ -112,7 +112,7 @@ class RegisterUser(View):
         bodyStr = bodyBytes.decode()
         bodyDict = json.loads(bodyStr)
         # 2.获取数据
-        username = bodyDict.get('username')   # 通过.get()的方式如果存在异常会中断操作
+        username = bodyDict.get('username')  # 通过.get()的方式如果存在异常会中断操作
         password = bodyDict.get('password')
         phone = bodyDict.get('phone')
         verifyCode = bodyDict.get('verifyCode')
@@ -122,13 +122,13 @@ class RegisterUser(View):
         if not all([username, password, phone, verifyCode, avatar]):
             return JsonResponse({'code': 400, 'errmsg': 'params err'})
         # 合法性校验(用户名)
-        if not re.match('.{2,6}', username):
+        if not re.match('^(.){2,6}$', username):
             return JsonResponse({'code': 400, 'errmsg': 'uname format err'})
         # 重复性校验(用户名)
         if User.objects.filter(username=username).count() != 0:
             return JsonResponse({'code': 400, 'errmsg': 'uname multiple'})
         # 合法性校验(密码)
-        if not re.match('.{6,20}', password):
+        if not re.match('^(.){6,20}$', password):
             return JsonResponse({'code': 400, 'errmsg': 'passwd format err'})
         # 合法性校验(手机号)
         if not re.match('1(?:3\\d|4[4-9]|5[0-35-9]|6[67]|7[013-8]|8\\d|9\\d)\\d{8}', phone):
@@ -146,3 +146,11 @@ class RegisterUser(View):
         user = User.objects.create_user(username=username, password=password, mobile=phone, avatarPath=avatar)
         user.save()
         return JsonResponse({'code': 0, 'errmsg': 'ok'})
+
+    '''
+    如果需求是注册成功后即表示用户认证通过，那么此时可以在注册成功后实现"状态保持"（注册成功后直接跳转登录）
+    如果需求是注册成功后不表示用户认证通过，那么此时不用在注册成功后实现"状态保持"（仅注册成功）
+    实现状态保持的两种方式：
+        在客户端存储信息使用cookie
+        在服务端存储信息使用session
+    '''
