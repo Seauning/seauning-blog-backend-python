@@ -24,7 +24,7 @@ SECRET_KEY = 'wvmi2k#r+oc9s)71bd&9l*sp)5(5$3t4@ncw8ld1w7lx*b_xe6'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'www.seauning.site']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'www.seauning.site']
 
 # Application definition
 
@@ -35,11 +35,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',  # 跨域应用
     # 自定义模块
     'apps.users'    # 用户
 ]
 
 MIDDLEWARE = [
+    # 跨域中间件需要放在最上层
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -199,3 +202,13 @@ LOGGING = {
 # 这个点式路径包含Django应用的名称(必须位于INSTALLED_APPS中)，和要作用User模型的Django模型的名称
 # 指定本项目用户模型类
 AUTH_USER_MODEL = 'users.User'
+
+
+# 白名单 CORS
+CORS_ORIGIN_WHITELIST = (
+    'http://127.0.0.1:8081',
+    'http://localhost:8081',
+    'http://www.seauning.site:8081',
+)
+# 允许携带cookie
+CORS_ALLOW_CREDENTIALS = True
