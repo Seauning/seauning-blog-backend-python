@@ -46,7 +46,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    # 'django.middleware.csrf.CsrfViewMiddleware',  # 为了使用postman进行测试需要关掉csrf防护
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -205,7 +205,8 @@ AUTH_USER_MODEL = 'users.User'
 
 
 # 白名单 CORS
-CORS_ORIGIN_WHITELIST = (
+# CORS_ORIGIN_WHITELIST（旧的写法）
+CORS_ALLOWED_ORIGINS = (
     'http://127.0.0.1:8081',
     'http://localhost:8081',
     'http://www.seauning.site:8081',

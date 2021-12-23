@@ -6,4 +6,6 @@ urlpatterns = [
     path('usernames/<username:username>/count/', views.UsernameCountView.as_view()),
     # 判断手机号是否重复，以及手机号合法性
     path('phones/<phone>/count/', views.PhoneCountView.as_view()),
+    # 用户注册接口
+    path('register/', views.RegisterUser.as_view()),
 ]

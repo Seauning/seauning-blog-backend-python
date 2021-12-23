@@ -1,3 +1,4 @@
+import json
 import re
 
 from django.views import View
@@ -61,7 +62,7 @@ class PhoneCountView(View):
         响应；
             JSON格式数据
             {
-            code:0,            # 状态码
+            code:0/1,           # 状态码,0表示成功，1表示失败
             errmsg: ok，        # 错误信息
             count:0/1,          # 手机号个数
             }
@@ -76,7 +77,67 @@ class PhoneCountView(View):
         regex = '1(?:3\\d|4[4-9]|5[0-35-9]|6[67]|7[013-8]|8\\d|9\\d)\\d{8}'
         # 需要添加手机号码匹配不正确的情况，让前端知道手机号码格式错误，需要提醒用户进行更改
         if not re.match(regex, phone):
-            return JsonResponse({'code': 1, 'errmsg': '手机号不正确'})
+            return JsonResponse({'code': 1, 'errmsg': 'phone multiple'})
 
         count = User.objects.filter(mobile=phone).count()
         return JsonResponse({'code': 0, 'errmsg': 'ok', 'count': count})
+
+
+class RegisterUser(View):
+    """
+    注册用户
+    前端:
+        点击确定
+        获取用户信息并校验（，是否同意协议:略）
+        发送请求
+    后端：
+        请求：接受信息(POST---JSON格式)
+        业务逻辑：   验证数据。数据入库
+        路由： POST register/
+        响应；
+            JSON格式数据
+            {
+            code:0,            # 状态码
+            errmsg: ok，        # 错误信息
+            }
+    """
+
+    def checkverifyCode(self, verifyCode):
+        return True
+
+    def post(self, request):
+        # 1.接收请求（JSON数据）
+        bodyBytes = request.body
+        bodyStr = bodyBytes.decode()
+        bodyDict = json.loads(bodyStr)
+        # 2.获取数据
+        username = bodyDict.get('username')   # 通过.get()的方式如果存在异常会中断操作
+        password = bodyDict.get('password')
+        phone = bodyDict.get('phone')
+        verifyCode = bodyDict.get('verifyCode')
+        avatar = bodyDict.get('avatar')
+
+        # 3.验证数据
+        # all中的元素只要是None或者False则返回False
+        if not all([username, password, phone, verifyCode, avatar]):
+            return JsonResponse({'code': 400, 'errmsg': 'params err'})
+
+        if not re.match('.{2,6}', username):
+            return JsonResponse({'code': 400, 'errmsg': 'uname format err'})
+
+        if User.objects.filter(username=username).count() != 0:
+            return JsonResponse({'code': 400, 'errmsg': 'uname multiple'})
+
+        if not re.match('1(?:3\\d|4[4-9]|5[0-35-9]|6[67]|7[013-8]|8\\d|9\\d)\\d{8}', phone):
+            return JsonResponse({'code': 400, 'errmsg': 'phone format err'})
+
+        if User.objects.filter(mobile=phone).count() != 0:
+            return JsonResponse({'code': 400, 'errmsg': 'phone multiple'})
+
+        if not self.checkverifyCode(verifyCode):
+            return JsonResponse({'code': 400, 'errmsg': 'valid err'})
+
+        # 4.创建数据插入数据表
+        user = User(username=username, password=password, mobile=phone, avatarPath=avatar)
+        user.save()
+        return JsonResponse({'code': 0, 'errmsg': 'ok'})
