@@ -10,5 +10,4 @@ urlpatterns = [
     path('upload/avatar/', views.AvatarUploadView.as_view()),
     # 用户注册接口
     path('register/', views.RegisterUserView.as_view()),
-
 ]

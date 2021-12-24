@@ -128,7 +128,9 @@ STATIC_URL = '/static/'  # 在模板文件里想要调用静态资源需加上st
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 
 MEDIA_URL = '/media/'  # 同STATIC_URL
-MEDIA_ROOT = [os.path.join(BASE_DIR, 'media')]
+# 媒体路径不能采用这种格式[os.path.join(BASE_DIR, 'media')]
+# 否则如果想在浏览器访问媒体资源会报错
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 '''
 将 session 保存在 redis 中

@@ -3,6 +3,7 @@ import os
 import re
 import time
 
+from blog_server import settings
 from django.views import View
 from apps.users.models import User
 from django.http import JsonResponse
@@ -47,6 +48,17 @@ class UsernameCountView(View):
         count = User.objects.filter(username=username).count()
         # 3. 返回响应
         return JsonResponse({'code': 0, 'errmsg': 'ok', 'count': count})
+
+
+def getTimePath(uid):
+    mediapath = settings.MEDIA_ROOT
+    userpath = mediapath + '\\uploads\\userAvatar\\user_{}'.format(uid)
+    if not os.path.exists(userpath):
+        os.mkdir(userpath)
+    timepath = userpath + time.strftime('\\%Y_%m_%d', time.localtime())
+    if not os.path.exists(timepath):
+        os.mkdir(timepath)
+    return timepath
 
 
 class PhoneCountView(View):
@@ -102,16 +114,25 @@ class AvatarUploadView(View):
     """
 
     def post(self, request):
-        # avatarFile = request.FILES.getlist('file', None)
-        # avatarData = ''
-        # # 拿出头像信息
-        # for content in avatarFile[0].chunks():
-        #     avatarData += content
-        # # 保存在session中
-        # request.session['avatar'] = avatarData
+        avatarFileInfo = request.FILES.getlist('file', None)
+        try:
+            mediapath = settings.MEDIA_ROOT
+            userpath = mediapath + '\\uploads\\userAvatar'
+            if not os.path.exists(userpath):
+                os.mkdir(userpath)
+            name = avatarFileInfo[0].name
+            avatarPath = userpath + '\\temp\\{}'.format(name)
+            with open(avatarPath, 'wb') as f:
+                for content in avatarFileInfo[0].chunks():
+                    f.write(content)
+        except Exception:
+            return JsonResponse({'code': 400, 'errmsg': 'upload failed'})
         return JsonResponse({
             'code': 0,
-            'errmsg': 'ok'
+            'errmsg': 'ok',
+            'data': {
+                'url': 'http://localhost:8082/media/uploads/userAvatar/temp/' + name
+            }
         })
 
 
@@ -191,29 +212,8 @@ class RegisterUserView(View):
         # user = User(username=username, password=password, mobile=phone, avatarPath=avatar)
         # user.save()
         # 此方法会加密密码
-        user = User.objects.create_user(username=username, password=password, mobile=phone)
-        """""""""""(此部分保存图片暂不能解决，明天再查阅具体方法)
-        # try:
-        from blog_server import settings
-        mediapath = settings.MEDIA_ROOT
-        userpath = mediapath[0] + '\\uploads\\userAvatar\\user_{}'.format(user.id)
-        if not os.path.exists(userpath):
-            os.mkdir(userpath)
-        timepath = userpath + time.strftime('\\%Y_%m_%d', time.localtime())
-        if not os.path.exists(timepath):
-            os.mkdir(timepath)
-        avatarPath = timepath + '\\{}'.format(avatarFileInfo['name'])
-        
-        with open(avatarPath, 'wb') as f:
-            avataData = request.get(avatarFileInfo['url'])
-            print(avataData)
-            # for content in avatarFileInfo.chunks():
-            #     f.write(content)
-        user.update(avatarPath='http://www.localhost.com:8082' + avatarPath)
+        user = User.objects.create_user(username=username, password=password, mobile=phone, avatarPath=avatarFileInfo.url)
 
-        # except Exception as e:
-        #     return JsonResponse({'code': 400, 'errmsg': 'upload failed'})
-        """""""""""
         # 5.状态保持(本项目中不在注册后保持状态，此处仅示例)
         # from django.contrib.auth import login
         # # params:request,user
