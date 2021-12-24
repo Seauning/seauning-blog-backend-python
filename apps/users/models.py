@@ -38,9 +38,8 @@ class User(AbstractUser):
     # 头像
     avatarPath = models.ImageField(upload_to=user_directory_path,
                                    max_length=300,
-                                   blank=True,
                                    null=True,
-                                   default='upload/userAvatar/default.png',
+                                   default='http://localhost:8082/media/upload/userAvatar/default.png',
                                    verbose_name='头像')
 
     class Meta:

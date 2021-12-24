@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import re
@@ -29,7 +30,7 @@ class UsernameCountView(View):
             JSON格式数据
             {
             code:0,            # 状态码
-            errmsg: ok，        # 错误信息
+            msg: ok，        # 错误信息
             count:0/1,          # 用户名个数
             }
     """
@@ -43,11 +44,19 @@ class UsernameCountView(View):
         # 1.接收用户名，进行合法性校验
         #   更改为，在路由匹配中加入自定义转换器，在传入路径参数的时候进行合法性校验
         # if not re.match('[(a-zA-Z0-9-_~)|(\u4e00-\u9fa5)]{2,6}', username):
-        #     return JsonResponse({'code': 0, 'errmsg': '用户名不满足需求'})
+        #     return JsonResponse({'code': 0, 'msg': '用户名不满足需求'})
         # 2. 根据用户名查询数据
-        count = User.objects.filter(username=username).count()
+        if username is None:
+            return JsonResponse({'code': 400, 'msg': 'pars err'})
+        try:
+            count = User.objects.filter(username=username).count()
+        except Exception:
+            return JsonResponse({'code': 500, 'msg': 'get failed'})
+
         # 3. 返回响应
-        return JsonResponse({'code': 0, 'errmsg': 'ok', 'count': count})
+        return JsonResponse({'code': 0, 'msg': 'ok', 'data': {
+            'count': count
+        }})
 
 
 def getTimePath(uid):
@@ -77,7 +86,7 @@ class PhoneCountView(View):
             JSON格式数据
             {
             code:0/400,           # 状态码,0表示成功，400表示数据错误
-            errmsg: ok，        # 错误信息
+            msg: ok，        # 错误信息
             count:0/1,          # 手机号个数
             }
     """
@@ -88,13 +97,22 @@ class PhoneCountView(View):
         :param phone: 手机号
         :return: JSON
         """
+        if phone is None:
+            return JsonResponse({'code': 400, 'msg': 'pars err'})
+
         regex = '^1(?:3\\d|4[4-9]|5[0-35-9]|6[67]|7[013-8]|8\\d|9\\d)\\d{8}$'
         # 需要添加手机号码匹配不正确的情况，让前端知道手机号码格式错误，需要提醒用户进行更改
         if not re.match(regex, phone):
-            return JsonResponse({'code': 400, 'errmsg': 'phone format err'})
+            return JsonResponse({'code': 400, 'msg': 'phone fmt err'})
 
-        count = User.objects.filter(mobile=phone).count()
-        return JsonResponse({'code': 0, 'errmsg': 'ok', 'count': count})
+        try:
+            count = User.objects.filter(mobile=phone).count()
+        except Exception:
+            return JsonResponse({'code': 500, 'msg': 'get failed'})
+
+        return JsonResponse({'code': 0, 'msg': 'ok', 'data': {
+            'count': count
+        }})
 
 
 class AvatarUploadView(View):
@@ -108,30 +126,43 @@ class AvatarUploadView(View):
         响应；
             JSON格式数据
             {
-            code:0,            # 状态码
-            errmsg: ok，        # 错误信息
+            code:0,                  # 状态码
+            msg: ok，                # 错误信息
+            data: {
+                    url: ''         # 头像的本地链接
+                }
             }
     """
 
     def post(self, request):
-        avatarFileInfo = request.FILES.getlist('file', None)
         try:
+            avatarFileInfo = request.FILES.getlist('file', None)
             mediapath = settings.MEDIA_ROOT
             userpath = mediapath + '\\uploads\\userAvatar'
             if not os.path.exists(userpath):
                 os.mkdir(userpath)
-            name = avatarFileInfo[0].name
-            avatarPath = userpath + '\\temp\\{}'.format(name)
+            # 找到最后一个小数点
+            dotIndex = avatarFileInfo[0].name.rfind('.')
+            # 获取图片类型
+            avatarType = avatarFileInfo[0].name[dotIndex:]
+            md5 = hashlib.md5()
+            # 获取图片名字
+            avatarName = avatarFileInfo[0].name[:dotIndex]
+            # 加密
+            md5.update(avatarName.encode('utf-8'))
+            avatarPath = userpath + '\\temp\\{}'.format(md5.hexdigest() + avatarType)
+            # 写入图像
             with open(avatarPath, 'wb') as f:
                 for content in avatarFileInfo[0].chunks():
                     f.write(content)
         except Exception:
-            return JsonResponse({'code': 400, 'errmsg': 'upload failed'})
+            return JsonResponse({'code': 500, 'msg': 'upload failed'})
+
         return JsonResponse({
             'code': 0,
-            'errmsg': 'ok',
+            'msg': 'ok',
             'data': {
-                'url': 'http://localhost:8082/media/uploads/userAvatar/temp/' + name
+                'url': 'http://localhost:8082/media/uploads/userAvatar/temp/' + md5.hexdigest() + avatarType
             }
         })
 
@@ -151,7 +182,7 @@ class RegisterUserView(View):
             JSON格式数据
             {
             code:0,            # 状态码
-            errmsg: ok，        # 错误信息
+            msg: ok，        # 错误信息
             }
     """
 
@@ -172,54 +203,65 @@ class RegisterUserView(View):
         return 1
 
     def post(self, request):
-        # 1.接收请求（JSON数据）
-        bodyBytes = request.body
-        bodyStr = bodyBytes.decode()
-        bodyDict = json.loads(bodyStr)
-        # 2.获取数据
-        username = bodyDict.get('username')  # 通过.get()的方式如果存在异常会中断操作
-        password = bodyDict.get('password')
-        phone = bodyDict.get('phone')
-        verifyCode = bodyDict.get('verifyCode')
-        avatarFileInfo = bodyDict.get('avatar')
-        # 3.验证数据
-        # all中的元素只要是None或者False则返回False
-        if not all([username, password, phone, verifyCode, avatarFileInfo]):
-            return JsonResponse({'code': 400, 'errmsg': 'params err'})
-        # 合法性校验(用户名)
-        if not re.match('^(.){2,6}$', username):
-            return JsonResponse({'code': 400, 'errmsg': 'uname format err'})
-        # 重复性校验(用户名)
-        if User.objects.filter(username=username).count() != 0:
-            return JsonResponse({'code': 400, 'errmsg': 'uname multiple'})
-        # 合法性校验(密码)
-        if not re.match('^(.){6,20}$', password):
-            return JsonResponse({'code': 400, 'errmsg': 'passwd format err'})
-        # 合法性校验(手机号)
-        if not re.match('^1(?:3\\d|4[4-9]|5[0-35-9]|6[67]|7[013-8]|8\\d|9\\d)\\d{8}$', phone):
-            return JsonResponse({'code': 400, 'errmsg': 'phone format err'})
-        # 重复性校验(手机号)
-        if User.objects.filter(mobile=phone).count() != 0:
-            return JsonResponse({'code': 400, 'errmsg': 'phone multiple'})
-        # 手机验证码校验
-        verifyRes = True or self.checkverifyCode(verifyCode, phone)
-        if verifyRes == -1:
-            return JsonResponse({'code': 400, 'errmsg': 'valid dead'})
-        elif verifyRes == 0:
-            return JsonResponse({'code': 400, 'errmsg': 'valid err'})
-        # 4.创建用户插入用户表
-        # 此方法密码无加密
-        # user = User(username=username, password=password, mobile=phone, avatarPath=avatar)
-        # user.save()
-        # 此方法会加密密码
-        user = User.objects.create_user(username=username, password=password, mobile=phone, avatarPath=avatarFileInfo.url)
+        try:
+            # 1.接收请求（JSON数据）
+            bodyBytes = request.body
+            bodyStr = bodyBytes.decode()
+            bodyDict = json.loads(bodyStr)
+            # 2.获取数据
+            username = bodyDict.get('username')  # 通过.get()的方式如果存在异常会中断操作
+            password = bodyDict.get('password')
+            phone = bodyDict.get('phone')
+            verifyCode = bodyDict.get('verifyCode')
+            # 传递过来的默认值可能为空字符串
+            avatarFileInfo = '' if bodyDict.get('avatar') == '' else bodyDict.get('avatar').url
+            # 3.验证数据
+            # all中的元素只要是None或者False则返回False
+            if not all([username, password, phone, verifyCode]):
+                return JsonResponse({'code': 400, 'msg': 'pars err'})
+            # 合法性校验(用户名)
+            if not re.match('^(.){2,6}$', username):
+                return JsonResponse({'code': 400, 'msg': 'uname fmt err'})
+            # 重复性校验(用户名)
+            if User.objects.filter(username=username).count() != 0:
+                return JsonResponse({'code': 400, 'msg': 'uname mtpl'})
+            # 合法性校验(密码)
+            if not re.match('^(.){6,20}$', password):
+                return JsonResponse({'code': 400, 'msg': 'passwd fmt err'})
+            # 合法性校验(手机号)
+            if not re.match('^1(?:3\\d|4[4-9]|5[0-35-9]|6[67]|7[013-8]|8\\d|9\\d)\\d{8}$', phone):
+                return JsonResponse({'code': 400, 'msg': 'phone fmt err'})
+            # 重复性校验(手机号)
+            if User.objects.filter(mobile=phone).count() != 0:
+                return JsonResponse({'code': 400, 'msg': 'phone mtpl'})
+            # 手机验证码校验
+            verifyRes = self.checkverifyCode(verifyCode, phone)
+            if verifyRes == -1:
+                return JsonResponse({'code': 400, 'msg': 'valid dead'})
+            elif verifyRes == 0:
+                return JsonResponse({'code': 400, 'msg': 'valid err'})
+            # 4.创建用户插入用户表
+            # 此方法密码无加密
+            # user = User(username=username, password=password, mobile=phone, avatarPath=avatar)
+            # user.save()
+            # 此方法会加密密码(在这里对头像进行判断是为了使用数据库中的默认值，若直接复制则不会用默认值)
+            if avatarFileInfo == '':
+                user = User.objects.create_user(username=username, password=password, mobile=phone)
+            else:
+                user = User.objects.create_user(username=username, password=password, mobile=phone,
+                                                avatarPath=avatarFileInfo)
+        except Exception:
+            return JsonResponse({
+                'code': 500,
+                'msg': 'register failed'
+            })
 
         # 5.状态保持(本项目中不在注册后保持状态，此处仅示例)
         # from django.contrib.auth import login
         # # params:request,user
         # login(request, user)
 
-        return JsonResponse({'code': 0, 'errmsg': 'ok'})
+        return JsonResponse({'code': 0, 'msg': 'ok'})
 
     '''
     如果需求是注册成功后即表示用户认证通过，那么此时可以在注册成功后实现"状态保持"（注册成功后直接跳转登录）
