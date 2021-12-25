@@ -212,9 +212,9 @@ class RegisterUserView(View):
             username = bodyDict.get('username')  # 通过.get()的方式如果存在异常会中断操作
             password = bodyDict.get('password')
             phone = bodyDict.get('phone')
-            verifyCode = bodyDict.get('verifyCode')
+            verifyCode = bodyDict.get('smsVerifyCode')
             # 传递过来的默认值可能为空字符串
-            avatarFileInfo = '' if bodyDict.get('avatar') == '' else bodyDict.get('avatar').url
+            avatarFileInfo = bodyDict.get('avatar')['url'] if bodyDict.get('avatar') != '' else ''
             # 3.验证数据
             # all中的元素只要是None或者False则返回False
             if not all([username, password, phone, verifyCode]):
