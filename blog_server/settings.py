@@ -37,7 +37,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',  # 跨域应用，位置没关系
     # 自定义模块
-    'apps.users'  # 用户
+    'apps.users',  # 用户
+    'apps.verifications',   # 验证码
 ]
 
 MIDDLEWARE = [

@@ -1,9 +1,50 @@
 import re
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render
 
 # Create your views here.
 from django.views import View
+
+
+class ImgCodeView(View):
+    """
+    获取短信验证码
+    前端:
+        点击获取图片验证码
+        生成uuid
+        发送请求(参数uuid)
+    后端：
+        请求：接受信息
+        业务逻辑: 生成图片验证码，保存图片验证码，发送图片验证码
+        路由： uuid
+        响应；
+            JSON格式数据
+            {
+                code:0,            # 状态码
+                msg: ok，        # 错误信息
+            }
+    """
+
+    def get(self, request, uuid):
+        # 1、接收路由中的uuid
+        # 2、生成图片验证码和图片二进制
+        from libs.captcha.captcha import captcha
+        # text是图片验证码内容
+        # img是图片二进制
+        text, img = captcha.generate_captcha()
+        # 3、通过redis保存图片验证码
+        # 3.1 链接redis
+        from django_redis import get_redis_connection
+        redisCli = get_redis_connection('code')
+        # 3.2 存入验证码
+        # name,time(s),value
+        redisCli.setex('img_{}'.format(uuid), 60, text)
+        # 4、返回图片二进制
+        # 因为图片是二进制，我们不能返回一个Json数据
+        # content_type=响应体数据类型
+        # content_type  的语法是: 大类/小类
+        # 如图片：image/jpeg,image/png
+        return HttpResponse(img, content_type='image/jpeg')
 
 
 class SmsCodeView(View):

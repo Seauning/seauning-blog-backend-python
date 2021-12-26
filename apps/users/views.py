@@ -3,11 +3,13 @@ import json
 import os
 import re
 import time
+import logging
 
 from blog_server import settings
 from django.views import View
 from apps.users.models import User
 from django.http import JsonResponse
+logger = logging.getLogger('django')
 
 
 # Create your views here.
@@ -220,7 +222,7 @@ class RegisterUserView(View):
             if not all([username, password, phone, verifyCode]):
                 return JsonResponse({'code': 400, 'msg': 'pars err'})
             # 合法性校验(用户名)
-            if not re.match('^(.){2,6}$', username):
+            if not re.match('^(.){2,10}$', username):
                 return JsonResponse({'code': 400, 'msg': 'uname fmt err'})
             # 重复性校验(用户名)
             if User.objects.filter(username=username).count() != 0:
@@ -270,3 +272,97 @@ class RegisterUserView(View):
         在客户端存储信息使用cookie
         在服务端存储信息使用session
     '''
+
+
+class CheckUserView(View):
+    """
+    校验图片验证码
+    前端:
+        验证码框blur
+    后端：
+        请求：接受信息(POST---JSON格式)
+        业务逻辑：   验证数据。数据入库
+        路由： POST checkImgCode/
+        响应；
+            JSON格式数据
+            {
+            code:0,            # 状态码
+            msg: ok，        # 错误信息
+            }
+    """
+    def checkUserInfo(self, username, password):
+        try:
+            user = User.objects.get(username=username)
+        except Exception:
+            return -1
+        from django.contrib.auth.hashers import check_password
+        if not check_password(password, user.password):
+            return 0
+        return 1
+
+    def checkImgValidCode(self, uuid, validCode):
+        from django_redis import get_redis_connection
+        redisCli = get_redis_connection('code')
+        code = redisCli.get('img_{}'.format(uuid))
+        # 验证码不存在的情况
+        if code is None:
+            return -1
+        # 对比验证码
+        if code.decode().lower() != validCode.lower():   # 错误
+            return 0
+        # 验证正确就删除图形验证码，避免恶意测试图形验证码
+        try:
+            redisCli.delete('img_%s' % uuid)
+        except Exception as e:
+            logger.error(e)
+        return 1
+
+    def post(self, request):
+        try:
+            bodyBytes = request.body
+            bodyStr = bodyBytes.decode()
+            bodyDict = json.loads(bodyStr)
+            username = bodyDict.get('username')
+            password = bodyDict.get('password')
+            uuid = bodyDict.get('uuid')
+            validCode = bodyDict.get('verifyCode')
+            if not all([username, password, uuid, validCode]):
+                return JsonResponse({
+                    'code': 400,
+                    'msg': 'pars err'
+                })
+            # 进行用户名与密码校验
+            userCheckRes = self.checkUserInfo(username, password)
+            if userCheckRes == -1:  # 用户名不存在
+                return JsonResponse({
+                    'code': 400,
+                    'msg': 'usr nonexists'
+                })
+            elif userCheckRes == 0:     # 密码错误
+                return JsonResponse({
+                    'code': 400,
+                    'msg': 'pwd err'
+                })
+            # 进行验证码校验
+            codeCheckRes = self.checkImgValidCode(uuid, validCode)
+            if codeCheckRes == -1:
+                return JsonResponse({
+                    'code': 400,
+                    'msg': 'valid dead'
+                })
+            elif codeCheckRes == 0:
+                return JsonResponse({
+                    'code': 400,
+                    'msg': 'valid err'
+                })
+
+        except Exception:
+            return JsonResponse({
+                'code': 500,
+                'msg': 'check failed'
+            })
+
+        return JsonResponse({
+                'code': 0,
+                'msg': 'ok'
+            })
