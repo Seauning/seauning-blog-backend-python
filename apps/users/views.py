@@ -329,37 +329,37 @@ class CheckUserView(View):
             if not all([username, password, uuid, validCode]):
                 return JsonResponse({
                     'code': 400,
-                    'msg': 'pars err'
+                    'msg': '登录信息不能为空'
                 })
             # 进行用户名与密码校验
             userCheckRes = self.checkUserInfo(username, password)
             if userCheckRes == -1:  # 用户名不存在
                 return JsonResponse({
                     'code': 400,
-                    'msg': 'usr nonexists'
+                    'msg': '用户名不存在'
                 })
             elif userCheckRes == 0:     # 密码错误
                 return JsonResponse({
                     'code': 400,
-                    'msg': 'pwd err'
+                    'msg': '密码错误'
                 })
             # 进行验证码校验
             codeCheckRes = self.checkImgValidCode(uuid, validCode)
             if codeCheckRes == -1:
                 return JsonResponse({
                     'code': 400,
-                    'msg': 'valid dead'
+                    'msg': '验证码失效'
                 })
             elif codeCheckRes == 0:
                 return JsonResponse({
                     'code': 400,
-                    'msg': 'valid err'
+                    'msg': '验证码错误'
                 })
 
         except Exception:
             return JsonResponse({
                 'code': 500,
-                'msg': 'check failed'
+                'msg': '登录失败，请稍后再试'
             })
 
         return JsonResponse({
