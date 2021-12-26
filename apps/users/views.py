@@ -49,11 +49,11 @@ class UsernameCountView(View):
         #     return JsonResponse({'code': 0, 'msg': '用户名不满足需求'})
         # 2. 根据用户名查询数据
         if username is None:
-            return JsonResponse({'code': 400, 'msg': 'pars err'})
+            return JsonResponse({'code': 400, 'msg': '用户名不能为空'})
         try:
             count = User.objects.filter(username=username).count()
         except Exception:
-            return JsonResponse({'code': 500, 'msg': 'get failed'})
+            return JsonResponse({'code': 500, 'msg': '服务器响应错误，请检测网络'})
 
         # 3. 返回响应
         return JsonResponse({'code': 0, 'msg': 'ok', 'data': {
@@ -100,17 +100,17 @@ class PhoneCountView(View):
         :return: JSON
         """
         if phone is None:
-            return JsonResponse({'code': 400, 'msg': 'pars err'})
+            return JsonResponse({'code': 400, 'msg': '手机号不能为空'})
 
         regex = '^1(?:3\\d|4[4-9]|5[0-35-9]|6[67]|7[013-8]|8\\d|9\\d)\\d{8}$'
         # 需要添加手机号码匹配不正确的情况，让前端知道手机号码格式错误，需要提醒用户进行更改
         if not re.match(regex, phone):
-            return JsonResponse({'code': 400, 'msg': 'phone fmt err'})
+            return JsonResponse({'code': 400, 'msg': '手机号格式错误'})
 
         try:
             count = User.objects.filter(mobile=phone).count()
         except Exception:
-            return JsonResponse({'code': 500, 'msg': 'get failed'})
+            return JsonResponse({'code': 500, 'msg': '服务器响应错误，请检测网络'})
 
         return JsonResponse({'code': 0, 'msg': 'ok', 'data': {
             'count': count
@@ -158,11 +158,11 @@ class AvatarUploadView(View):
                 for content in avatarFileInfo[0].chunks():
                     f.write(content)
         except Exception:
-            return JsonResponse({'code': 500, 'msg': 'upload failed'})
+            return JsonResponse({'code': 500, 'msg': '上传失败，请尝试重新上传'})
 
         return JsonResponse({
             'code': 0,
-            'msg': 'ok',
+            'msg': '上传成功',
             'data': {
                 'url': 'http://localhost:8082/media/uploads/userAvatar/temp/' + md5.hexdigest() + avatarType
             }
@@ -220,28 +220,28 @@ class RegisterUserView(View):
             # 3.验证数据
             # all中的元素只要是None或者False则返回False
             if not all([username, password, phone, verifyCode]):
-                return JsonResponse({'code': 400, 'msg': 'pars err'})
+                return JsonResponse({'code': 400, 'msg': '必填项不能为空'})
             # 合法性校验(用户名)
             if not re.match('^(.){2,10}$', username):
-                return JsonResponse({'code': 400, 'msg': 'uname fmt err'})
+                return JsonResponse({'code': 400, 'msg': '用户名格式错误'})
             # 重复性校验(用户名)
             if User.objects.filter(username=username).count() != 0:
-                return JsonResponse({'code': 400, 'msg': 'uname mtpl'})
+                return JsonResponse({'code': 400, 'msg': '用户名重复注册'})
             # 合法性校验(密码)
             if not re.match('^(.){6,20}$', password):
-                return JsonResponse({'code': 400, 'msg': 'passwd fmt err'})
+                return JsonResponse({'code': 400, 'msg': '密码格式错误'})
             # 合法性校验(手机号)
             if not re.match('^1(?:3\\d|4[4-9]|5[0-35-9]|6[67]|7[013-8]|8\\d|9\\d)\\d{8}$', phone):
-                return JsonResponse({'code': 400, 'msg': 'phone fmt err'})
+                return JsonResponse({'code': 400, 'msg': '手机号格式错误'})
             # 重复性校验(手机号)
             if User.objects.filter(mobile=phone).count() != 0:
-                return JsonResponse({'code': 400, 'msg': 'phone mtpl'})
+                return JsonResponse({'code': 400, 'msg': '手机号重复注册'})
             # 手机验证码校验
             verifyRes = self.checkverifyCode(verifyCode, phone)
             if verifyRes == -1:
-                return JsonResponse({'code': 400, 'msg': 'valid dead'})
+                return JsonResponse({'code': 400, 'msg': '验证码失效，请重新发送'})
             elif verifyRes == 0:
-                return JsonResponse({'code': 400, 'msg': 'valid err'})
+                return JsonResponse({'code': 400, 'msg': '验证码错误'})
             # 4.创建用户插入用户表
             # 此方法密码无加密
             # user = User(username=username, password=password, mobile=phone, avatarPath=avatar)
@@ -255,7 +255,7 @@ class RegisterUserView(View):
         except Exception:
             return JsonResponse({
                 'code': 500,
-                'msg': 'register failed'
+                'msg': '注册失败，请尝试重新注册'
             })
 
         # 5.状态保持(本项目中不在注册后保持状态，此处仅示例)
@@ -263,7 +263,7 @@ class RegisterUserView(View):
         # # params:request,user
         # login(request, user)
 
-        return JsonResponse({'code': 0, 'msg': 'ok'})
+        return JsonResponse({'code': 0, 'msg': '恭喜您注册成功'})
 
     '''
     如果需求是注册成功后即表示用户认证通过，那么此时可以在注册成功后实现"状态保持"（注册成功后直接跳转登录）

@@ -74,12 +74,14 @@ class SmsCodeView(View):
             from django_redis import get_redis_connection
             redisCli = get_redis_connection('code')
             isNeverDead = redisCli.get('send_flag_{}'.format(phone))
+            # 判断该手机号60秒内是否已经发送过验证码
             if isNeverDead:
                 return 0
             from random import randint
             smsCode = randint(100000, 999999)
             # 2.保存短信验证码(18000秒30分钟)
             redisCli.setex('sms_{}'.format(phone), 18000, smsCode)
+            # 该手机号60秒内是否发送过短信的标记
             redisCli.setex('send_flag_{}'.format(phone), 60, 1)
             # 3.发送短信验证码
             from ronglian_sms_sdk import SmsSDK
@@ -97,7 +99,7 @@ class SmsCodeView(View):
             if phone is None:
                 return JsonResponse({
                     'code': 400,
-                    'msg': 'pars err'
+                    'msg': '手机号不能为空'
                 })
             # 需要添加手机号码匹配不正确的情况，让前端知道手机号码格式错误，需要提醒用户进行更改
             # 2.2 合法性校验(手机号)
@@ -108,20 +110,20 @@ class SmsCodeView(View):
             if res == 0:
                 return JsonResponse({
                     'code': 400,
-                    'msg': 'send mtpl'
+                    'msg': '操作过于频繁，请稍后再试'
                 })
             elif res == -1:
                 return JsonResponse({
                     'code': 400,
-                    'msg': 'make failed'
+                    'msg': '短信发送失败，请稍后再试'
                 })
         except Exception:
             return JsonResponse({
                 'code': 500,
-                'msg': 'send failed'
+                'msg': '短信发送失败，请检查网络'
             })
         # 6.返回响应
         return JsonResponse({
             'code': 0,
-            'msg': 'ok'
+            'msg': '发送成功，请在30分钟内填写验证码'
         })
