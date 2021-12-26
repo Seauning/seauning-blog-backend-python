@@ -68,6 +68,27 @@ class SmsCodeView(View):
     accToken = 'fb5fa5fd2b1c4df591499191c37b917a'
     appId = '8aaf07087de13e49017de600928300c9'
 
+    def smsCodeOpt(self, phone):
+        try:
+            # 1.生成短信验证码
+            from django_redis import get_redis_connection
+            redisCli = get_redis_connection('code')
+            isNeverDead = redisCli.get('send_flag_{}'.format(phone))
+            if isNeverDead:
+                return 0
+            from random import randint
+            smsCode = randint(100000, 999999)
+            # 2.保存短信验证码(18000秒30分钟)
+            redisCli.setex('sms_{}'.format(phone), 18000, smsCode)
+            redisCli.setex('send_flag_{}'.format(phone), 60, 1)
+            # 3.发送短信验证码
+            from ronglian_sms_sdk import SmsSDK
+            sdk = SmsSDK(self.accId, self.accToken, self.appId)
+            sdk.sendMessage("1", phone, (smsCode, 5))
+        except Exception:
+            return -1
+        return 1
+
     def get(self, request, phone):
         try:
             # 1.获取请求参数(phone)
@@ -82,23 +103,23 @@ class SmsCodeView(View):
             # 2.2 合法性校验(手机号)
             if not re.match('^1(?:3\\d|4[4-9]|5[0-35-9]|6[67]|7[013-8]|8\\d|9\\d)\\d{8}$', phone):
                 return JsonResponse({'code': 400, 'msg': 'phone fmt err'})
-            # 3.生成短信验证码
-            from django_redis import get_redis_connection
-            redisCli = get_redis_connection('code')
-            from random import randint
-            smsCode = randint(100000, 999999)
-            # 4.保存短信验证码(3000秒5分钟)
-            redisCli.setex('sms_{}'.format(phone), 3000, smsCode)
-            # 5.发送短信验证码
-            from ronglian_sms_sdk import SmsSDK
-            sdk = SmsSDK(self.accId, self.accToken, self.appId)
-            sdk.sendMessage("1", phone, (smsCode, 5))
+            # 3.验证码操作
+            res = self.smsCodeOpt(phone)
+            if res == 0:
+                return JsonResponse({
+                    'code': 400,
+                    'msg': 'send mtpl'
+                })
+            elif res == -1:
+                return JsonResponse({
+                    'code': 400,
+                    'msg': 'make failed'
+                })
         except Exception:
             return JsonResponse({
                 'code': 500,
                 'msg': 'send failed'
             })
-
         # 6.返回响应
         return JsonResponse({
             'code': 0,
