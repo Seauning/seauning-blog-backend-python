@@ -64,9 +64,6 @@ class SmsCodeView(View):
                 msg: ok，        # 错误信息
             }
     """
-    accId = '8aaf07087de13e49017de600917800c2'
-    accToken = 'fb5fa5fd2b1c4df591499191c37b917a'
-    appId = '8aaf07087de13e49017de600928300c9'
 
     def smsCodeOpt(self, phone):
         try:
@@ -79,14 +76,20 @@ class SmsCodeView(View):
                 return 0
             from random import randint
             smsCode = randint(100000, 999999)
-            # 2.保存短信验证码(18000秒30分钟)
-            redisCli.setex('sms_{}'.format(phone), 18000, smsCode)
+            # 通过redis的pipeline管道操作减少交互次数
+            pipeline = redisCli.pipeline()
+            # 2.保存短信验证码(1800秒30分钟)
+            pipeline.setex('sms_{}'.format(phone), 1800, smsCode)
             # 该手机号60秒内是否发送过短信的标记
-            redisCli.setex('send_flag_{}'.format(phone), 60, 1)
+            pipeline.setex('send_flag_{}'.format(phone), 60, 1)
+            # 执行
+            pipeline.execute()
             # 3.发送短信验证码
-            from ronglian_sms_sdk import SmsSDK
-            sdk = SmsSDK(self.accId, self.accToken, self.appId)
-            sdk.sendMessage("1", phone, (smsCode, 5))
+            # from ronglian_sms_sdk import SmsSDK
+            # sdk = SmsSDK(self.accId, self.accToken, self.appId)
+            # sdk.sendMessage("1", phone, (smsCode, 5))
+            from celeryTask.sms.tasks import celerySendSmsCode
+            celerySendSmsCode.delay(phone, smsCode)
         except Exception:
             return -1
         return 1
