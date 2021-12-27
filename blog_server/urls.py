@@ -31,7 +31,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     # 因为在每个子应用都放在apps中，因此此处需要用apps来获取子应用
     path('api/', include('apps.users.urls')),
-    path('api/', include('apps.verifications.urls'))
+    path('api/', include('apps.verifications.urls')),
+    # path('api/', include('apps.articles.urls')),
 ]
 
 if settings.DEBUG:

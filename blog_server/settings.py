@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     # 自定义模块
     'apps.users',  # 用户
     'apps.verifications',   # 验证码
+    'apps.articles',    # 文章
 ]
 
 MIDDLEWARE = [
