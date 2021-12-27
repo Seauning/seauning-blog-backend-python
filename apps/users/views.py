@@ -277,7 +277,7 @@ class RegisterUserView(View):
     '''
 
 
-class CheckUserView(View):
+class UserLoginView(View):
     """
     用户登录
     前端:
@@ -380,6 +380,45 @@ class CheckUserView(View):
             return JsonResponse({
                 'code': 500,
                 'msg': '登录失败，请稍后再试'
+            })
+        return JsonResponse({
+                'code': 0,
+                'msg': 'ok'
+            })
+
+
+class UserLogoutView(View):
+    """
+    用户登录
+    前端:
+        填写登录表单
+        点击登录
+    后端：
+        请求：接受信息(POST---JSON格式)
+        业务逻辑：   验证登录信息，提示登录成功或失败，状态保持
+        路由： POST login/
+        响应；
+            JSON格式数据
+            {
+            code:0,            # 状态码
+            msg: ok，        # 错误信息
+            }
+    """
+
+    def delete(self, request):
+        try:
+            # 1.退出当前用户，清除session
+            from django.contrib.auth import logout
+            logout(request)
+            # 2.清除前端的登录标识
+            '''
+                后续如果添加了token和cookie需要在此处进行清除
+            '''
+
+        except Exception:
+            return JsonResponse({
+                'code': 500,
+                'msg': '退出失败，请稍后再试'
             })
         return JsonResponse({
                 'code': 0,

@@ -11,5 +11,7 @@ urlpatterns = [
     # 用户注册接口
     path('register/', views.RegisterUserView.as_view()),
     # 校验登录用户
-    path('login/', views.CheckUserView.as_view()),
+    path('login/', views.UserLoginView.as_view()),
+    # 校验登录用户
+    path('logout/', views.UserLogoutView.as_view()),
 ]
