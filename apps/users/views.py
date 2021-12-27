@@ -13,9 +13,15 @@ logger = logging.getLogger('django')
 
 
 # Create your views here.
+# 都不为空或者空字符串
+def allNotEmpty(*params):
+    for param in params:
+        if not param or str(param).strip() == '':
+            return False
+    return True
+
 
 # 类视图
-
 class UsernameCountView(View):
     """
     判断用户名是否重复注册
@@ -48,13 +54,12 @@ class UsernameCountView(View):
         # if not re.match('[(a-zA-Z0-9-_~)|(\u4e00-\u9fa5)]{2,6}', username):
         #     return JsonResponse({'code': 0, 'msg': '用户名不满足需求'})
         # 2. 根据用户名查询数据
-        if username is None:
+        if not allNotEmpty(username):
             return JsonResponse({'code': 400, 'msg': '用户名不能为空'})
         try:
             count = User.objects.filter(username=username).count()
         except Exception:
             return JsonResponse({'code': 500, 'msg': '服务器响应错误，请检测网络'})
-
         # 3. 返回响应
         return JsonResponse({'code': 0, 'msg': 'ok', 'data': {
             'count': count
@@ -99,14 +104,12 @@ class PhoneCountView(View):
         :param phone: 手机号
         :return: JSON
         """
-        if phone is None:
+        if not allNotEmpty(phone):
             return JsonResponse({'code': 400, 'msg': '手机号不能为空'})
-
         regex = '^1(?:3\\d|4[4-9]|5[0-35-9]|6[67]|7[013-8]|8\\d|9\\d)\\d{8}$'
         # 需要添加手机号码匹配不正确的情况，让前端知道手机号码格式错误，需要提醒用户进行更改
         if not re.match(regex, phone):
             return JsonResponse({'code': 400, 'msg': '手机号格式错误'})
-
         try:
             count = User.objects.filter(mobile=phone).count()
         except Exception:
@@ -218,8 +221,8 @@ class RegisterUserView(View):
             # 传递过来的默认值可能为空字符串
             avatarFileInfo = bodyDict.get('avatar')['url'] if bodyDict.get('avatar') != '' else ''
             # 3.验证数据
-            # all中的元素只要是None或者False则返回False
-            if not all([username, password, phone, verifyCode]):
+            # allNotEmpty中的元素只要是None、False、''、'   '则返回False
+            if not allNotEmpty([username, password, phone, verifyCode]):
                 return JsonResponse({'code': 400, 'msg': '必填项不能为空'})
             # 合法性校验(用户名)
             if not re.match('^(.){2,10}$', username):
@@ -276,13 +279,14 @@ class RegisterUserView(View):
 
 class CheckUserView(View):
     """
-    校验图片验证码
+    用户登录
     前端:
-        验证码框blur
+        填写登录表单
+        点击登录
     后端：
         请求：接受信息(POST---JSON格式)
-        业务逻辑：   验证数据。数据入库
-        路由： POST checkImgCode/
+        业务逻辑：   验证登录信息，提示登录成功或失败，状态保持
+        路由： POST login/
         响应；
             JSON格式数据
             {
@@ -290,16 +294,27 @@ class CheckUserView(View):
             msg: ok，        # 错误信息
             }
     """
+    # 校验用户信息
     def checkUserInfo(self, username, password):
-        try:
-            user = User.objects.get(username=username)
-        except Exception:
-            return -1
-        from django.contrib.auth.hashers import check_password
-        if not check_password(password, user.password):
-            return 0
-        return 1
+        # try:
+        #     user = User.objects.get(username=username)
+        # except Exception:
+        #     return -1
+        # from django.contrib.auth.hashers import check_password
+        # if not check_password(password, user.password):
+        #     return 0
+        # 上面两步校验也可以通过如下方法实现(我们一般不提示用户具体的错误信息，所以采用下面的方式)
+        # 1、判断是根据用户名校验还是手机号校验
+        if re.match('^1(?:3\\d|4[4-9]|5[0-35-9]|6[67]|7[013-8]|8\\d|9\\d)\\d{8}$', username):
+            User.USERNAME_FIELD = 'mobile'
+        else:
+            User.USERNAME_FIELD = 'username'
+        from django.contrib.auth import authenticate
+        # 2、验证
+        return authenticate(username=username, password=password)
+        # 如果验证正确则会返回该用户，否则返回None
 
+    # 校验图片验证码
     def checkImgValidCode(self, uuid, validCode):
         from django_redis import get_redis_connection
         redisCli = get_redis_connection('code')
@@ -319,29 +334,15 @@ class CheckUserView(View):
 
     def post(self, request):
         try:
-            bodyBytes = request.body
-            bodyStr = bodyBytes.decode()
-            bodyDict = json.loads(bodyStr)
+            bodyDict = json.loads(request.body)
             username = bodyDict.get('username')
             password = bodyDict.get('password')
             uuid = bodyDict.get('uuid')
             validCode = bodyDict.get('verifyCode')
-            if not all([username, password, uuid, validCode]):
+            if not allNotEmpty([username, password, uuid, validCode]):
                 return JsonResponse({
                     'code': 400,
                     'msg': '登录信息不能为空'
-                })
-            # 进行用户名与密码校验
-            userCheckRes = self.checkUserInfo(username, password)
-            if userCheckRes == -1:  # 用户名不存在
-                return JsonResponse({
-                    'code': 400,
-                    'msg': '用户名不存在'
-                })
-            elif userCheckRes == 0:     # 密码错误
-                return JsonResponse({
-                    'code': 400,
-                    'msg': '密码错误'
                 })
             # 进行验证码校验
             codeCheckRes = self.checkImgValidCode(uuid, validCode)
@@ -355,13 +356,31 @@ class CheckUserView(View):
                     'code': 400,
                     'msg': '验证码错误'
                 })
-
+            # 进行用户名与密码校验
+            user = self.checkUserInfo(username, password)
+            if not user:  # 登录名或密码错误
+                return JsonResponse({
+                    'code': 400,
+                    'msg': '登录名或密码错误'
+                })
+            # 状态保持
+            from django.contrib.auth import login
+            login(request, user)
+            # 十天内免登陆(后续有该需求可以添加)
+            """
+                # 前端勾选十天内免登陆，并在登录的时候携带该信息
+                # 后端在session中保持该用户名的记录并设置有效期为十天
+                if remember:
+                    request.session.set_expiry(None)
+                else:
+                    # 不记住登录，浏览器关闭及过期
+                    request.session.set_expiry(0)
+            """
         except Exception:
             return JsonResponse({
                 'code': 500,
                 'msg': '登录失败，请稍后再试'
             })
-
         return JsonResponse({
                 'code': 0,
                 'msg': 'ok'
