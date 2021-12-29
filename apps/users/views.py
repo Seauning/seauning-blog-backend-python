@@ -9,6 +9,8 @@ from blog_server import settings
 from django.views import View
 from apps.users.models import User
 from django.http import JsonResponse
+from django.core import signing
+
 logger = logging.getLogger('django')
 
 
@@ -277,6 +279,61 @@ class RegisterUserView(View):
     '''
 
 
+class Token:
+    HEADER = {'typ': 'JWT', 'alg': 'default'}
+    TIME_OUT = 24 * 60 * 60  # 1 day
+
+    def encrypt(self, obj):
+        """加密"""
+        value = signing.dumps(obj)
+        value = signing.b64_encode(value.encode()).decode()
+        return value
+
+    def decrypt(self, src):
+        """解密"""
+        src = signing.b64_decode(src.encode()).decode()
+        raw = signing.loads(src)
+        return raw
+
+    def create_token(self, uid, username):
+        """生成token信息"""
+        # 1. 加密头信息
+        header = self.encrypt(self.HEADER)
+        # 2. 构造Payload
+        payload = {"uid": uid, "username": username, "iat": time.time()}
+        payload = self.encrypt(payload)
+        # 3. 生成签名
+        md5 = hashlib.md5()
+        md5.update(("%s.%s" % (header, payload)).encode())
+        signature = md5.hexdigest()
+        token = "%s.%s.%s" % (header, payload, signature)
+        # 4.存储到缓存中
+        from django_redis import get_redis_connection
+        redisCli = get_redis_connection('token')
+        redisCli.setex('token_{}'.format(uid), self.TIME_OUT, token)
+        return token
+
+    def get_payload(self, token):
+        payload = str(token).split('.')[1]
+        payload = self.decrypt(payload)
+        return payload
+
+    # 通过token获取用户编号
+    def get_username(self, token):
+        payload = self.get_payload(token)
+        return payload['uid']
+
+    # 校验token
+    def check_token(self, token):
+        uid = self.get_username(token)
+        from django_redis import get_redis_connection
+        redisCli = get_redis_connection('token')
+        last_token = redisCli.get('token_{}'.format(uid)).decode()
+        if last_token:
+            return last_token == token
+        return False
+
+
 class UserLoginView(View):
     """
     用户登录
@@ -294,6 +351,7 @@ class UserLoginView(View):
             msg: ok，        # 错误信息
             }
     """
+
     # 校验用户信息
     def checkUserInfo(self, username, password):
         # try:
@@ -323,7 +381,7 @@ class UserLoginView(View):
         if code is None:
             return -1
         # 对比验证码
-        if code.decode().lower() != validCode.lower():   # 错误
+        if code.decode().lower() != validCode.lower():  # 错误
             return 0
         # 验证正确就删除图形验证码，避免恶意测试图形验证码
         try:
@@ -366,6 +424,15 @@ class UserLoginView(View):
             # 状态保持
             from django.contrib.auth import login
             login(request, user)
+            t = Token()
+            token = t.create_token(user.id, user.username)
+            response = JsonResponse({
+                'code': 0,
+                'msg': 'ok',
+                'data': {
+                    'token': token
+                }
+            })
             # 十天内免登陆(后续有该需求可以添加)
             """
                 # 前端勾选十天内免登陆，并在登录的时候携带该信息
@@ -379,12 +446,10 @@ class UserLoginView(View):
         except Exception:
             return JsonResponse({
                 'code': 500,
-                'msg': '登录失败，请稍后再试'
+                'msg': '登录失败，请稍后再试',
+
             })
-        return JsonResponse({
-                'code': 0,
-                'msg': 'ok'
-            })
+        return response
 
 
 class UserLogoutView(View):
@@ -421,6 +486,6 @@ class UserLogoutView(View):
                 'msg': '退出失败，请稍后再试'
             })
         return JsonResponse({
-                'code': 0,
-                'msg': 'ok'
-            })
+            'code': 0,
+            'msg': 'ok'
+        })
