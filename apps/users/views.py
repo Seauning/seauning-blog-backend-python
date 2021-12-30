@@ -546,7 +546,7 @@ class UserInfoView(View):
             username = bodyDict['username']
             mobile = bodyDict['mobile']
             email = bodyDict['email']
-            avatar = bodyDict['avatar']
+            avatar = bodyDict['avatarUrl']
             obj = {'username': username, 'mobile': mobile, 'email': email, 'avatarPath': avatar}
             newObj = {}
             for key in obj.keys():
