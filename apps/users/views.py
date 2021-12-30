@@ -140,24 +140,26 @@ class AvatarUploadView(View):
                 }
             }
     """
+    def pathParseAndMixin(self, data, base):
+        mediapath = settings.MEDIA_ROOT
+        userpath = mediapath + '\\uploads\\{}'.format(base)
+        if not os.path.exists(userpath):
+            os.mkdir(userpath)
+        # 找到最后一个小数点
+        dotIndex = data[0].name.rfind('.')
+        # 获取图片类型
+        avatarType = data[0].name[dotIndex:]
+        md5 = hashlib.md5()
+        # 获取图片名字
+        avatarName = data[0].name[:dotIndex]
+        # 加密
+        md5.update(avatarName.encode('utf-8'))
+        return userpath + '\\temp\\{}'.format(md5.hexdigest() + avatarType), md5, avatarType
 
     def post(self, request):
         try:
             avatarFileInfo = request.FILES.getlist('file', None)
-            mediapath = settings.MEDIA_ROOT
-            userpath = mediapath + '\\uploads\\userAvatar'
-            if not os.path.exists(userpath):
-                os.mkdir(userpath)
-            # 找到最后一个小数点
-            dotIndex = avatarFileInfo[0].name.rfind('.')
-            # 获取图片类型
-            avatarType = avatarFileInfo[0].name[dotIndex:]
-            md5 = hashlib.md5()
-            # 获取图片名字
-            avatarName = avatarFileInfo[0].name[:dotIndex]
-            # 加密
-            md5.update(avatarName.encode('utf-8'))
-            avatarPath = userpath + '\\temp\\{}'.format(md5.hexdigest() + avatarType)
+            avatarPath, md5, avatarType = self.pathParseAndMixin(avatarFileInfo, 'userAvatar')
             # 写入图像
             with open(avatarPath, 'wb') as f:
                 for content in avatarFileInfo[0].chunks():
@@ -552,6 +554,7 @@ class UserInfoView(View):
             for key in obj.keys():
                 if obj[key] and obj[key].strip() != '':
                     newObj[key] = obj[key]
+            # 通过update修改多个值(注意：此方法需要结合filter使用，如果采用get最好使用.语法进行修改单个属性)
             User.objects.filter(id=uid).update(**newObj)
         except Exception as e:
             print(e)
@@ -562,4 +565,43 @@ class UserInfoView(View):
         return JsonResponse({
             'code': 0,
             'msg': 'ok',
+        })
+
+
+class BlogBgImgView(AvatarUploadView, View):
+    """
+        该接口仅用于upload组件上传背景图时的接口
+        前端:
+            上传
+        后端：
+            请求：接受信息
+            路由： POST upload/bgImg/
+            响应；
+                JSON格式数据
+                {
+                code:0,                  # 状态码
+                msg: ok，                # 错误信息
+                data: {
+                        url: ''         # 头像的本地链接
+                    }
+                }
+        """
+
+    def post(self, request):
+        try:
+            fileInfo = request.FILES.getlist('file', None)
+            path, md5, type = self.pathParseAndMixin(fileInfo, 'blogBgImg')
+            # 写入图像
+            with open(path, 'wb') as f:
+                for content in fileInfo[0].chunks():
+                    f.write(content)
+        except Exception:
+            return JsonResponse({'code': 500, 'msg': '上传失败，请尝试重新上传'})
+
+        return JsonResponse({
+            'code': 0,
+            'msg': '上传成功',
+            'data': {
+                'url': 'http://localhost:8082/media/uploads/userAvatar/temp/' + md5.hexdigest() + type
+            }
         })
