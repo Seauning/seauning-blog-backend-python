@@ -8,8 +8,6 @@ urlpatterns = [
     path('phones/<phone>/count/', views.PhoneCountView.as_view()),
     # 头像上传接口
     path('upload/avatar/', views.AvatarUploadView.as_view()),
-    # 背景图上传接口
-    path('upload/bgImg/', views.BlogBgImgView.as_view()),
     # 用户注册接口
     path('register/', views.RegisterUserView.as_view()),
     # 校验登录用户
