@@ -424,13 +424,23 @@ class UserLoginView(View):
             # 状态保持
             from django.contrib.auth import login
             login(request, user)
+            userinfo = {
+                'id': user.id,
+                'username': user.username,
+                'mobile': user.mobile,
+                'email': user.email,
+                'avatar': str(user.avatarPath),
+                'isSuper': user.is_superuser,
+                'isStaff': user.is_staff,
+            }
             t = Token()
             token = t.create_token(user.id, user.username)
             response = JsonResponse({
                 'code': 0,
                 'msg': 'ok',
                 'data': {
-                    'token': token
+                    'token': token,
+                    'userinfo': userinfo
                 }
             })
             # 十天内免登陆(后续有该需求可以添加)
@@ -488,4 +498,68 @@ class UserLogoutView(View):
         return JsonResponse({
             'code': 0,
             'msg': 'ok'
+        })
+
+
+class UserInfoView(View):
+    # 获取用户信息
+    def post(self, request):
+        try:
+            token = request.headers['Authorization'][7:]
+            t = Token()
+            uid = t.get_username(token)
+            user = User.objects.get(id=uid)
+            userinfo = {
+                'id': user.id,
+                'username': user.username,
+                'mobile': user.mobile,
+                'email': user.email,
+                'avatar': str(user.avatarPath),
+                'isSuper': user.is_superuser,
+                'isStaff': user.is_staff,
+            }
+        except Exception:
+            return JsonResponse({
+                'code': 500,
+                'msg': '用户信息获取失败',
+            })
+
+        def set_default(obj):
+            if isinstance(obj, set):
+                print(obj)
+                return list(obj)
+            raise TypeError
+
+        return JsonResponse({
+            'code': 0,
+            'msg': 'ok',
+            'data': userinfo
+        })
+
+    # 更新用户信息
+    def put(self, request):
+        try:
+            token = request.headers['Authorization'][7:]
+            t = Token()
+            uid = t.get_username(token)
+            bodyDict = json.loads(request.body)
+            username = bodyDict['username']
+            mobile = bodyDict['mobile']
+            email = bodyDict['email']
+            avatar = bodyDict['avatar']
+            obj = {'username': username, 'mobile': mobile, 'email': email, 'avatarPath': avatar}
+            newObj = {}
+            for key in obj.keys():
+                if obj[key] and obj[key].strip() != '':
+                    newObj[key] = obj[key]
+            User.objects.filter(id=uid).update(**newObj)
+        except Exception as e:
+            print(e)
+            return JsonResponse({
+                'code': 500,
+                'msg': '用户信息更新失败',
+            })
+        return JsonResponse({
+            'code': 0,
+            'msg': 'ok',
         })
