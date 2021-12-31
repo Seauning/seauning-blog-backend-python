@@ -99,11 +99,38 @@ class ArticleView(View):
         """
 
     def post(self, requests):
-        bodyDict = json.load(requests.body)
+        try:
+            bodyDict = json.load(requests.body)
+            from ..users.views import Token
+            token = requests.headers['Authorization'][7:]
+            t = Token()
+            uid = t.get_username(token)
+            title = bodyDict['title']
+            description = bodyDict['text']
+            state = bodyDict['state']
+            type = bodyDict['type']
+            tag = bodyDict['tag']
+            article = Article.objects.create(**{
+                'title': title,
+                'description': description,
+                'state': state,
+                'user': uid,
+                'type': type,
+                'tag': tag
+            })
+        except Exception as e:
+            print(e)
+            return JsonResponse({
+                'code': 500,
+                'msg': '文章发布失败',
+            })
 
         return JsonResponse({
             'code': 0,
-            'msg': 'ok'
+            'msg': 'ok',
+            'data': {
+                'id': article.id
+            }
         })
 
     """

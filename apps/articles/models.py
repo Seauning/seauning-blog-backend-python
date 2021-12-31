@@ -2,7 +2,6 @@ from django.db import models
 from apps.users.models import User
 import django.utils.timezone as timezone
 
-
 # Create your models here.
 
 
@@ -57,7 +56,6 @@ class Article(models.Model):
         默认情况下 CharField 要求我们必须存入数据，否则就会报错。
         指定 CharField 的 blank=True 参数值后就可以允许空值
     """
-    title = models.CharField(verbose_name='标题', max_length=100, blank=True)
     createdDate = models.DateTimeField(verbose_name='创建时间',
                                        max_length=20,
                                        default=timezone.now)
@@ -65,6 +63,7 @@ class Article(models.Model):
                                         max_length=20,
                                         blank=True,
                                         null=True)
+    title = models.CharField(verbose_name='标题', max_length=100, blank=True)
     description = models.TextField(verbose_name='内容', blank=True)
     views = models.PositiveIntegerField('浏览量', default=0)  # 正整数
     state = models.CharField(choices=ARTICLE_STATE_CHOICES,
@@ -83,6 +82,11 @@ class Article(models.Model):
     tag = models.ManyToManyField(Tag, verbose_name='标签', blank=True,
                                  through='ArticleTag',
                                  through_fields=('article', 'tag'))
+    # 文章首页背景图
+    bgImgPath = models.ImageField(max_length=300,
+                                  null=True,
+                                  blank=True,
+                                  verbose_name='文章首页背景图')
 
     class Meta:
         db_table = 'blog_articles'  # 创建的数据表名
