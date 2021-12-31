@@ -18,7 +18,7 @@ class Type(models.Model):
        当然 django 还为我们提供了多种其它的数据类型，django 内置的全部类型可查看文档：
        https://docs.djangoproject.com/en/2.2/ref/models/fields/#field-types
    """
-    name = models.CharField(verbose_name='分类', max_length=20, default='学习日志', primary_key=True)
+    name = models.CharField(verbose_name='分类', max_length=20, default='learnlog', primary_key=True)
 
     class Meta:
         db_table = 'blog_types'  # 创建的数据表名
@@ -71,7 +71,7 @@ class Article(models.Model):
                              max_length=5)
     # 规定一个作者多篇文章，删除用户时保留它的文章，若通过该文章访问作者，提示该作者已注销
     # 此处绑定的外键需要使用settings.AUTH_USER_MODEL更新为我们扩展AbstractUser类的User模型，而不是原本Django的模型
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name='作者', on_delete=models.DO_NOTHING,
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, to_field='id', verbose_name='作者', on_delete=models.DO_NOTHING,
                              null=True,
                              related_name='user_art')
     # 文章分类(多篇文章一个类型)，删除类型时，将该分类的文章更改为默认值

@@ -2,9 +2,10 @@ import json
 
 from django.shortcuts import render
 from django.views import View
-from apps.articles.models import Article
+from apps.articles.models import Article, Type, Tag
 from django.http import JsonResponse
 from ..users.views import AvatarUploadView
+from ..users.views import Token, User
 
 
 class BlogBgImgView(AvatarUploadView, View):
@@ -28,12 +29,15 @@ class BlogBgImgView(AvatarUploadView, View):
 
     def post(self, request):
         try:
+            id = json.load(request.body)['id']
             fileInfo = request.FILES.getlist('file', None)
             path, md5, type = self.pathParseAndMixin(fileInfo, 'blogBgImg')
             # 写入图像
             with open(path, 'wb') as f:
                 for content in fileInfo[0].chunks():
                     f.write(content)
+            url = 'http://localhost:8082/media/uploads/userAvatar/temp/' + md5.hexdigest() + type
+
         except Exception:
             return JsonResponse({'code': 500, 'msg': '上传失败，请尝试重新上传'})
 
@@ -41,7 +45,7 @@ class BlogBgImgView(AvatarUploadView, View):
             'code': 0,
             'msg': '上传成功',
             'data': {
-                'url': 'http://localhost:8082/media/uploads/userAvatar/temp/' + md5.hexdigest() + type
+                'url': url
             }
         })
 
@@ -100,10 +104,9 @@ class ArticleView(View):
 
     def post(self, requests):
         try:
-            bodyDict = json.load(requests.body)
-            from ..users.views import Token
             token = requests.headers['Authorization'][7:]
             t = Token()
+            bodyDict = json.loads(requests.body)
             uid = t.get_username(token)
             title = bodyDict['title']
             description = bodyDict['text']
@@ -114,9 +117,9 @@ class ArticleView(View):
                 'title': title,
                 'description': description,
                 'state': state,
-                'user': uid,
-                'type': type,
-                'tag': tag
+                'user': User.objects.get(id=uid),
+                'type': Type.objects.get(name=type),
+                'tag': Tag.objects.get(name=tag)
             })
         except Exception as e:
             print(e)
