@@ -81,7 +81,8 @@ class Article(models.Model):
     # 指明多对多关系的关联模型，以及具体的外键
     tag = models.ManyToManyField(Tag, verbose_name='标签', blank=True,
                                  through='ArticleTag',
-                                 through_fields=('article', 'tag'))
+                                 through_fields=('article', 'tag'),
+                                 related_name='tag_art')
     # 文章首页背景图
     bgImgPath = models.ImageField(max_length=300,
                                   null=True,

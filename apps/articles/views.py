@@ -111,23 +111,27 @@ class ArticleView(View):
             title = bodyDict['title']
             description = bodyDict['text']
             state = bodyDict['state']
-            type = bodyDict['type']
             tag = bodyDict['tag']
-            article = Article.objects.create(**{
-                'title': title,
-                'description': description,
-                'state': state,
-                'user': User.objects.get(id=uid),
-                'type': Type.objects.get(name=type),
-                'tag': Tag.objects.get(name=tag)
-            })
+            obj = {'title': title, 'description': description, 'state': state}
+            newObj = {}
+            for key in obj.keys():
+                if obj[key] and obj[key].strip() != '':
+                    newObj[key] = obj[key]
+            # 给一个默认的type
+            newObj['type'] = Type.objects.get(name=bodyDict['type']) if bodyDict['type'] != '' and\
+                                                                        not bodyDict['type'] else Type.objects.get(name='learnlog')
+            newObj['user'] = User.objects.get(id=uid)
+            if not Tag.objects.get(name=tag):
+                tagObj = Tag.objects.create(name=tag)
+            else:
+                tagObj = Tag.objects.get(name=tag)
+            article = tagObj.tag_art.create(**newObj)
         except Exception as e:
             print(e)
             return JsonResponse({
                 'code': 500,
                 'msg': '文章发布失败',
             })
-
         return JsonResponse({
             'code': 0,
             'msg': 'ok',
