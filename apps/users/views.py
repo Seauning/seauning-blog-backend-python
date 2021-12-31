@@ -560,7 +560,7 @@ class UserInfoView(View):
             print(e)
             return JsonResponse({
                 'code': 500,
-                'msg': '用户信息更新失败',
+                'msg': '更新失败，存在相同的用户信息',
             })
         return JsonResponse({
             'code': 0,

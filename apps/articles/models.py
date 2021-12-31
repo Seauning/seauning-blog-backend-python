@@ -48,6 +48,10 @@ class Tag(models.Model):
 
 
 class Article(models.Model):
+    ARTICLE_STATE_CHOICES = (
+        ('byself', '原创'),
+        ('byother', '转载')
+    )
     id = models.AutoField(verbose_name='文章编号', primary_key=True)
     """
         默认情况下 CharField 要求我们必须存入数据，否则就会报错。
@@ -63,6 +67,9 @@ class Article(models.Model):
                                         null=True)
     description = models.TextField(verbose_name='内容', blank=True)
     views = models.PositiveIntegerField('浏览量', default=0)  # 正整数
+    state = models.CharField(choices=ARTICLE_STATE_CHOICES,
+                             verbose_name='状态', blank=True,
+                             max_length=5)
     # 规定一个作者多篇文章，删除用户时保留它的文章，若通过该文章访问作者，提示该作者已注销
     # 此处绑定的外键需要使用settings.AUTH_USER_MODEL更新为我们扩展AbstractUser类的User模型，而不是原本Django的模型
     user = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name='作者', on_delete=models.DO_NOTHING,

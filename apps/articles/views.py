@@ -1,3 +1,5 @@
+import json
+
 from django.shortcuts import render
 from django.views import View
 from apps.articles.models import Article
@@ -96,7 +98,8 @@ class ArticleView(View):
                 msg: ok，             # 错误信息
         """
 
-    def post(self):
+    def post(self, requests):
+        bodyDict = json.load(requests.body)
 
         return JsonResponse({
             'code': 0,
