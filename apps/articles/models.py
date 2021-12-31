@@ -19,6 +19,7 @@ class Type(models.Model):
        https://docs.djangoproject.com/en/2.2/ref/models/fields/#field-types
    """
     name = models.CharField(verbose_name='分类', max_length=20, default='learnlog', primary_key=True)
+    value = models.CharField(verbose_name='分类值', max_length=20, default='学习日志')
 
     class Meta:
         db_table = 'blog_types'  # 创建的数据表名
@@ -35,7 +36,8 @@ class Tag(models.Model):
        标签 Tag 也比较简单，和 Category 一样。
        再次强调一定要继承 models.Model 类！
    """
-    name = models.CharField(verbose_name='标签', max_length=20, primary_key=True)
+    name = models.CharField(verbose_name='标签', max_length=20, primary_key=True, default='')
+    value = models.CharField(verbose_name='标签值', max_length=20, default='')
 
     def __str__(self):
         return self.name
