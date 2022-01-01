@@ -46,7 +46,7 @@ class BlogBgImgView(AvatarUploadView, View):
                 }
         """
 
-    def post(self, request, id):
+    def post(self, request):
         try:
             fileInfo = request.FILES.getlist('file', None)
             path, md5, type = self.pathParseAndMixin(fileInfo, 'blogBgImg')
@@ -54,10 +54,7 @@ class BlogBgImgView(AvatarUploadView, View):
             with open(path, 'wb') as f:
                 for content in fileInfo[0].chunks():
                     f.write(content)
-            url = 'http://localhost:8082/media/uploads/userAvatar/temp/' + md5.hexdigest() + type
-            article = Article.objects.get(id=id)
-            article.bgImgPath = url
-            article.save()
+            url = 'http://localhost:8082/media/uploads/blogBgImg/temp/' + md5.hexdigest() + type
         except Exception:
             return JsonResponse({'code': 500, 'msg': '图片上传失败，请尝试重新上传'})
         return JsonResponse({
@@ -115,7 +112,6 @@ class ArticleSuperView(View):
     def get(self, request):
         try:
             uid = Token().get_username(request.headers['Authorization'][7:])
-
             articleList = getArticleList(uid)
         except Exception as e:
             return JsonResponse({
@@ -190,9 +186,11 @@ class ArticleView(View):
             uid = t.get_username(token)
             title = bodyDict['title']
             description = bodyDict['text']
-            state = bodyDict['state']
+            stateMode = {'byself': '原创', 'byother': '转载'}
+            state = stateMode[bodyDict['state']]
             tag = bodyDict['tag']
-            obj = {'title': title, 'description': description, 'state': state}
+            bgImgPath = bodyDict['url']
+            obj = {'title': title, 'description': description, 'state': state, 'bgImgPath': bgImgPath}
             newObj = {}
             for key in obj.keys():
                 if obj[key] and obj[key].strip() != '':
