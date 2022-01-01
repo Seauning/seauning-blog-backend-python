@@ -50,8 +50,8 @@ class Tag(models.Model):
 
 class Article(models.Model):
     ARTICLE_STATE_CHOICES = (
-        ('byself', '原创'),
-        ('byother', '转载')
+        ('byself', 'byself'),
+        ('byother', 'byother')
     )
     id = models.AutoField(verbose_name='文章编号', primary_key=True)
     """

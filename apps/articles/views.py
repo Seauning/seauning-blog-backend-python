@@ -1,7 +1,8 @@
 import json
 
+from django.db.models import Q
 from django.views import View
-from apps.articles.models import Article, Type, Tag
+from apps.articles.models import Article, Type, Tag, ArticleTag
 from django.http import JsonResponse
 from ..users.views import AvatarUploadView
 from ..users.views import Token, User
@@ -146,6 +147,30 @@ class ArticleView(View):
 
         """
 
+    def parseArticleData(self, bodyDict):
+        title = bodyDict['title']
+        description = bodyDict['text']
+        state = bodyDict['state']
+        bgImgPath = bodyDict['url']
+        obj = {'title': title, 'description': description, 'state': state, 'bgImgPath': bgImgPath}
+        newObj = {}
+        for key in obj.keys():
+            if obj[key] and obj[key].strip() != '':
+                newObj[key] = obj[key]
+        # Django中的外键需要一个实例，但是可能存在用户没有添加分类的情况，这时候我们需要给一个默认的type
+        # 注意分类与标签不同（分类必须有值，而标签不必，且用户不能创建分类)
+        newObj['type'] = Type.objects.get(name=bodyDict['type']) if \
+            bodyDict['type'] != '' and not bodyDict['type'] else Type.objects.get(name='learnlog')
+        # !!!!(在这里我们不能直接将tag加入到newObj里来，因为这是多对多关系，article和tag之间是靠表关联的，两者的模型中并无相应字段，我们只需要将tagObj返回)
+        # 如果存在Tag就直接赋值，如果不存在则重新创建，可能会出现获取到的Tag为''字符串的现象，这是我们默认允许的多对多关系
+        tag = bodyDict['tag']
+        tagObj = Tag.objects.filter(name=tag)
+        if tagObj.count() == 0:
+            tagObj = Tag.objects.create(name=tag)
+        else:
+            tagObj = tagObj[0]
+        return newObj, tagObj
+
     def get(self, request):
         try:
             articleList = getArticleList()
@@ -184,32 +209,11 @@ class ArticleView(View):
             t = Token()
             bodyDict = json.loads(requests.body)
             uid = t.get_username(token)
-            title = bodyDict['title']
-            description = bodyDict['text']
-            stateMode = {'byself': '原创', 'byother': '转载'}
-            state = stateMode[bodyDict['state']]
-            tag = bodyDict['tag']
-            bgImgPath = bodyDict['url']
-            obj = {'title': title, 'description': description, 'state': state, 'bgImgPath': bgImgPath}
-            newObj = {}
-            for key in obj.keys():
-                if obj[key] and obj[key].strip() != '':
-                    newObj[key] = obj[key]
-            # Django中的外键需要一个实例，但是可能存在用户没有添加分类的情况，这时候我们需要给一个默认的type
-            # 注意分类与标签不同（分类必须有值，而标签不必，且用户不能创建分类)
-            newObj['type'] = Type.objects.get(name=bodyDict['type']) if \
-                bodyDict['type'] != '' and not bodyDict['type'] else Type.objects.get(name='learnlog')
+            newObj, tagObj = self.parseArticleData(bodyDict)
             newObj['user'] = User.objects.get(id=uid)
-            # 如果存在Tag就直接赋值，如果不存在则重新创建，可能会出现获取到的Tag为''字符串的现象，这是我们默认允许的多对多关系
-            tagObj = Tag.objects.filter(name=tag)
-            if tagObj.count() == 0:
-                tagObj = Tag.objects.create(name=tag)
-            else:
-                tagObj = tagObj[0]
             # 通过Django中的反向关联创建的方式创建文章实例
             article = tagObj.tag_art.create(**newObj)
         except Exception as e:
-            print(e)
             return JsonResponse({
                 'code': 500,
                 'msg': '文章发布失败',
@@ -242,14 +246,35 @@ class ArticleView(View):
                 msg: ok，             # 错误信息
         """
 
-    def put(self, aid):
+    def put(self, request, aid):
         try:
+            # 0.校验token
+            token = request.headers['Authorization'][7:]
+            t = Token()
+            uid = t.get_username(token)
             # 1.获取该文章
+            bodyDict = json.loads(request.body)
             article = Article.objects.get(id=aid)
-            print(article)
+            if article.user_id != uid:  # 防止恶意攻击
+                return JsonResponse({
+                    'code': 400,
+                    'msg': '不允许修改他人的文章'
+                })
+            newObj, tagObj = self.parseArticleData(bodyDict)
+            tagList = [tagObj]
             # 2.修改该文章
-
-        except Exception:
+            article.tag.clear()  # 清空该文章已经有的标签
+            article.tag.add(*tagList)     # 给该篇文章添加新的标签
+            # 因为文章和标签时多对多关系，通过这两个模型的关联表进行修改
+            articleTags = ArticleTag.objects.filter(article_id=aid)   # 先找出所有需要修改的记录
+            # 2.重新添加多对多联系
+            # 这里多对多的数据更改有点迷糊了（?????)
+            for articleTag in articleTags:
+                # 此处的意思是，将多对多表中该文章的所有记录对应的文字实例全部更新
+                for (key, v) in newObj.items():
+                    setattr(articleTag.article, key, v)     # setattr是python中内置的一个修改实例属性值(不一定存在)的方法
+                articleTag.article.save()   # 记得在修改每各字段的同时，在其末尾保存修改(这里修改的是文章)
+        except Exception as e:
             return JsonResponse({
                 'code': 500,
                 'msg': '文章修改失败，请稍后再试'
@@ -278,16 +303,16 @@ class ArticleView(View):
                 msg: ok，             # 错误信息
         """
 
-    def delete(self, aid):
+    def delete(self, request, aid):
         try:
             # 删除该文章
-            Article.objects.delete(id=aid)
-        except Exception:
+            ArticleTag.objects.get(article_id=aid).delete()
+            Article.objects.get(id=aid).delete()
+        except Exception as e:
             return JsonResponse({
                 'code': 500,
                 'msg': '删除失败，请稍后再试'
             })
-
         return JsonResponse({
             'code': 0,
             'msg': 'ok'
