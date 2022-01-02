@@ -9,6 +9,7 @@ import django.utils.timezone as timezone
 from blog_server import settings
 
 
+# 类型
 class Type(models.Model):
     """
        django 要求模型必须继承 models.Model 类。

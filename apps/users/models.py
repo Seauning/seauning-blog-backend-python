@@ -16,7 +16,8 @@ from django.contrib.auth.models import AbstractUser
 '''
 
 # 2. Django 自带用户模型
-# 这个用户模型，有密码加密和验证
+# 这个用户模型，有密码加密和验证，该模型继承于AbstractUser
+# 我们通过自己创建一个User模型，然后继承于AbstractUser获取它的属性和方法
 # from django.contrib.auth.models import User
 '''
     此处需要注意：

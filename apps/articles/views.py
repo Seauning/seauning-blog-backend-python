@@ -297,7 +297,7 @@ class ArticleView(View):
         # Django中的外键需要一个实例，但是可能存在用户没有添加分类的情况，这时候我们需要给一个默认的type
         # 注意分类与标签不同（分类必须有值，而标签不必，且用户不能创建分类)
         newObj['type'] = Type.objects.get(name=bodyDict['type']) if \
-            bodyDict['type'] != '' and not bodyDict['type'] else Type.objects.get(name='learnlog')
+            bodyDict['type'] != '' and bodyDict['type'] is not None else Type.objects.get(name='learnlog')
         # !!!!(在这里我们不能直接将tag加入到newObj里来，因为这是多对多关系，article和tag之间是靠表关联的，两者的模型中并无相应字段，我们只需要将tagObj返回)
         # 如果存在Tag就直接赋值，如果不存在则重新创建，可能会出现获取到的Tag为''字符串的现象，这是我们默认允许的多对多关系
         tag = bodyDict['tag']
@@ -419,7 +419,8 @@ class ArticleView(View):
                 # 此处的意思是，将多对多表中该文章的所有记录对应的文字实例全部更新
                 for (key, v) in newObj.items():
                     setattr(articleTag.article, key, v)     # setattr是python中内置的一个修改实例属性值(不一定存在)的方法
-                articleTag.article.modifiedDate = timezone.localtime()          # 将修改时间变为当前
+                # 将修改时间变为当前(因为我们在模型定义时重构了save函数，自动更新修改时间，所以此处省略此行代码)
+                # articleTag.article.modifiedDate = timezone.localtime()
                 articleTag.article.save()   # 记得在修改每各字段的同时，在其末尾保存修改(这里修改的是文章)
         except Exception as e:
             return JsonResponse({
