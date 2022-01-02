@@ -9,12 +9,11 @@ from ..users.views import Token, User
 
 
 class TypeTagView(View):
-
     # 这个request参数必须加上，在前端发送axios请求时会带上request
     def get(self, request):
         try:
-            tags = [{'name': tag.name, 'value': tag.value} for tag in Tag.objects.all()]
-            types = [{'name': type.name, 'value': type.value} for type in Type.objects.all()]
+            tags = [{'name': tag.name, 'value': tag.value, 'count': tag.tag_art.all().count()} for tag in Tag.objects.all()]
+            types = [{'name': type.name, 'value': type.value, 'count': type.type_art.all().count() } for type in Type.objects.all()]
             data = {'tags': tags, 'types': types}
         except Exception as e:
             return JsonResponse({
@@ -77,16 +76,18 @@ def getArticleList(id=None):
         {
             'id': a.id,
             'title': a.title,
+            'createdTime': a.createdDate,
             'modifiedDate': a.modifiedDate,
             'text': a.description,
             'views': a.views,
             'state': a.state,
             'type': {'name': a.type.name, 'value': a.type.value},
-            'tag': [t for t in a.tag.values()],
+            'tag': [{'name': t.name, 'value': t.value} for t in a.tag.all() if t.name != ''],
             'bgPath': str(a.bgImgPath)
         }
         for a in articles
     ]
+
     return articleList
 
 
