@@ -507,9 +507,13 @@ class UserInfoView(View):
     # 获取用户信息
     def post(self, request):
         try:
-            token = request.headers['Authorization'][7:]
-            t = Token()
-            uid = t.get_username(token)
+            try:
+                uid = Token().get_username(request.headers['Authorization'][7:])
+            except Exception as e:
+                return JsonResponse({
+                    'code': 404,
+                    'msg': '非本博客用户禁止访问资源',
+                })
             user = User.objects.get(id=uid)
             userinfo = {
                 'id': user.id,
@@ -541,9 +545,13 @@ class UserInfoView(View):
     # 更新用户信息
     def put(self, request):
         try:
-            token = request.headers['Authorization'][7:]
-            t = Token()
-            uid = t.get_username(token)
+            try:
+                uid = Token().get_username(request.headers['Authorization'][7:])
+            except Exception as e:
+                return JsonResponse({
+                    'code': 404,
+                    'msg': '非本博客用户禁止访问资源',
+                })
             bodyDict = json.loads(request.body)
             username = bodyDict['username']
             mobile = bodyDict['mobile']

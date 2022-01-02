@@ -1,7 +1,6 @@
 import json
-import time
 
-from django.db.models import Q
+from django.utils import timezone
 from django.views import View
 from apps.articles.models import Article, Type, Tag, ArticleTag
 from django.http import JsonResponse
@@ -49,6 +48,13 @@ class BlogBgImgView(AvatarUploadView, View):
 
     def post(self, request):
         try:
+            try:
+                uid = Token().get_username(request.headers['Authorization'][7:])
+            except Exception as e:
+                return JsonResponse({
+                    'code': 404,
+                    'msg': '非本博客用户禁止访问资源',
+                })
             fileInfo = request.FILES.getlist('file', None)
             path, md5, type = self.pathParseAndMixin(fileInfo, 'blogBgImg')
             # 写入图像
@@ -88,6 +94,13 @@ class BlogArticleImgView(AvatarUploadView, View):
 
     def post(self, request):
         try:
+            try:
+                uid = Token().get_username(request.headers['Authorization'][7:])
+            except Exception as e:
+                return JsonResponse({
+                    'code': 404,
+                    'msg': '非本博客用户禁止访问资源',
+                })
             fileInfo = request.FILES.getlist('file', None)
             path, md5, type = self.pathParseAndMixin(fileInfo, 'blogArticleImg')
             # 写入图像
@@ -155,7 +168,13 @@ class ArticleSuperView(View):
 
     def get(self, request):
         try:
-            uid = Token().get_username(request.headers['Authorization'][7:])
+            try:
+                uid = Token().get_username(request.headers['Authorization'][7:])
+            except Exception as e:
+                return JsonResponse({
+                    'code': 404,
+                    'msg': '非本博客用户禁止访问资源',
+                })
             articleList = getArticleList(uid)
         except Exception as e:
             return JsonResponse({
@@ -170,6 +189,23 @@ class ArticleSuperView(View):
 
 
 class SigArticleView(View):
+    """
+    获取编号为id的文章
+    前端:
+        点击文章
+        发送请求
+    后端：
+        请求：接受文章编号
+        业务逻辑：
+            根据编号查询数据库，返回数据
+        响应；
+            JSON格式数据
+            {
+            code:0,            # 状态码
+            msg: ok，        # 错误信息
+            data:{},          # 文章
+            }
+    """
     def get(self, request, aid):
         try:
             q = Article.objects.get(id=aid)
@@ -198,6 +234,21 @@ class SigArticleView(View):
             'data': article
         })
 
+    """
+    增加观看人数
+    前端:
+        点访问文章
+    后端：
+        请求：接受文章编号
+        业务逻辑：
+            根据编号修改数据
+        响应；
+            JSON格式数据
+            {
+            code:0,            # 状态码
+            msg: ok，        # 错误信息
+            }
+    """
     def post(self, request):
         bodyDict = json.loads(request.body)
         aid = bodyDict['id']
@@ -292,10 +343,14 @@ class ArticleView(View):
 
     def post(self, requests):
         try:
-            token = requests.headers['Authorization'][7:]
-            t = Token()
+            try:
+                uid = Token().get_username(requests.headers['Authorization'][7:])
+            except Exception as e:
+                return JsonResponse({
+                    'code': 404,
+                    'msg': '非本博客用户禁止访问资源',
+                })
             bodyDict = json.loads(requests.body)
-            uid = t.get_username(token)
             newObj, tagObj = self.parseArticleData(bodyDict)
             newObj['user'] = User.objects.get(id=uid)
             # 通过Django中的反向关联创建的方式创建文章实例
@@ -336,9 +391,13 @@ class ArticleView(View):
     def put(self, request, aid):
         try:
             # 0.校验token
-            token = request.headers['Authorization'][7:]
-            t = Token()
-            uid = t.get_username(token)
+            try:
+                uid = Token().get_username(request.headers['Authorization'][7:])
+            except Exception as e:
+                return JsonResponse({
+                    'code': 404,
+                    'msg': '非本博客用户禁止访问资源',
+                })
             # 1.获取该文章
             bodyDict = json.loads(request.body)
             article = Article.objects.get(id=aid)
@@ -360,7 +419,7 @@ class ArticleView(View):
                 # 此处的意思是，将多对多表中该文章的所有记录对应的文字实例全部更新
                 for (key, v) in newObj.items():
                     setattr(articleTag.article, key, v)     # setattr是python中内置的一个修改实例属性值(不一定存在)的方法
-                # articleTag.article.modifiedDate =             # 将修改时间变为当前
+                articleTag.article.modifiedDate = timezone.localtime()          # 将修改时间变为当前
                 articleTag.article.save()   # 记得在修改每各字段的同时，在其末尾保存修改(这里修改的是文章)
         except Exception as e:
             return JsonResponse({
@@ -393,6 +452,13 @@ class ArticleView(View):
 
     def delete(self, request, aid):
         try:
+            try:
+                uid = Token().get_username(request.headers['Authorization'][7:])
+            except Exception as e:
+                return JsonResponse({
+                    'code': 404,
+                    'msg': '非本博客用户禁止访问资源',
+                })
             # 删除该文章
             ArticleTag.objects.get(article_id=aid).delete()
             Article.objects.get(id=aid).delete()
