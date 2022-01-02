@@ -66,6 +66,7 @@ class Article(models.Model):
                                         blank=True,
                                         null=True)
     title = models.CharField(verbose_name='标题', max_length=100, blank=True)
+    digest = models.TextField(verbose_name='摘要', blank=True)
     description = models.TextField(verbose_name='内容', blank=True)
     views = models.PositiveIntegerField('浏览量', default=0)  # 正整数
     state = models.CharField(choices=ARTICLE_STATE_CHOICES,

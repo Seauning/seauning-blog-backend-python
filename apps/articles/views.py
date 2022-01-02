@@ -1,4 +1,5 @@
 import json
+import time
 
 from django.db.models import Q
 from django.views import View
@@ -104,24 +105,27 @@ class BlogArticleImgView(AvatarUploadView, View):
             }
         })
 
+
 def getArticleList(id=None):
-    if id:
+    if id:  # 表明当前是查询该作者的所有文章
         user = User.objects.get(id=id)
         articles = user.user_art.all()
-    else:
-        articles = Article.objects.all()
+    else:    # 表明当前是查询所有文章
+        articles = Article.objects.all().order_by('-views')
     articleList = [
         {
             'id': a.id,
             'title': a.title,
             'createdTime': a.createdDate,
             'modifiedDate': a.modifiedDate,
+            'digest': a.digest,
             'text': a.description,
             'views': a.views,
             'state': a.state,
             'type': {'name': a.type.name, 'value': a.type.value},
             'tag': [{'name': t.name, 'value': t.value} for t in a.tag.all() if t.name != ''],
-            'bgPath': str(a.bgImgPath)
+            'bgPath': str(a.bgImgPath),
+            'user': {'name': a.user.username, 'avatar': str(a.user.avatarPath)}
         }
         for a in articles
     ]
@@ -165,6 +169,48 @@ class ArticleSuperView(View):
         })
 
 
+class SigArticleView(View):
+    def get(self, request, aid):
+        try:
+            q = Article.objects.get(id=aid)
+            article = {
+                'id': aid,
+                'title': q.title,
+                'createdTime': q.createdDate,
+                'modifiedDate': q.modifiedDate,
+                'digest': q.digest,
+                'text': q.description,
+                'views': q.views,
+                'state': q.state,
+                'type': {'name': q.type.name, 'value': q.type.value},
+                'tag': [{'name': t.name, 'value': t.value} for t in q.tag.all() if t.name != ''],
+                'bgPath': str(q.bgImgPath),
+                'user': {'name': q.user.username, 'avatar': str(q.user.avatarPath)}
+            }
+        except Exception as e:
+            return JsonResponse({
+                'code': 500,
+                'msg': '文章获取失败'
+            })
+        return JsonResponse({
+            'code': 0,
+            'msg': 'ok',
+            'data': article
+        })
+
+    def post(self, request):
+        bodyDict = json.loads(request.body)
+        aid = bodyDict['id']
+        views = bodyDict['views']
+        article = Article.objects.get(id=aid)
+        article.views = views
+        article.save()
+        return JsonResponse({
+            'code': 0,
+            'msg': 'ok',
+        })
+
+
 # Create your views here.
 class ArticleView(View):
     """
@@ -188,10 +234,11 @@ class ArticleView(View):
 
     def parseArticleData(self, bodyDict):
         title = bodyDict['title']
+        digest = bodyDict['digest']
         description = bodyDict['text']
         state = bodyDict['state']
         bgImgPath = bodyDict['url']
-        obj = {'title': title, 'description': description, 'state': state, 'bgImgPath': bgImgPath}
+        obj = {'title': title, 'digest': digest, 'description': description, 'state': state, 'bgImgPath': bgImgPath}
         newObj = {}
         for key in obj.keys():
             if obj[key] and obj[key].strip() != '':
@@ -223,6 +270,7 @@ class ArticleView(View):
             'msg': 'ok',
             'data': articleList
         })
+
 
     """
         添加文章
@@ -312,6 +360,7 @@ class ArticleView(View):
                 # 此处的意思是，将多对多表中该文章的所有记录对应的文字实例全部更新
                 for (key, v) in newObj.items():
                     setattr(articleTag.article, key, v)     # setattr是python中内置的一个修改实例属性值(不一定存在)的方法
+                # articleTag.article.modifiedDate =             # 将修改时间变为当前
                 articleTag.article.save()   # 记得在修改每各字段的同时，在其末尾保存修改(这里修改的是文章)
         except Exception as e:
             return JsonResponse({
