@@ -142,7 +142,7 @@ class AvatarUploadView(View):
     """
     def pathParseAndMixin(self, data, base):
         mediapath = settings.MEDIA_ROOT
-        userpath = mediapath + '\\uploads\\{}'.format(base)
+        userpath = mediapath + '\\uploads\\{}\\temp\\'.format(base)
         if not os.path.exists(userpath):
             os.mkdir(userpath)
         # 找到最后一个小数点
@@ -154,7 +154,7 @@ class AvatarUploadView(View):
         avatarName = data[0].name[:dotIndex]
         # 加密
         md5.update(avatarName.encode('utf-8'))
-        return userpath + '\\temp\\{}'.format(md5.hexdigest() + avatarType), md5, avatarType
+        return userpath + '{}'.format(md5.hexdigest() + avatarType), md5, avatarType
 
     def post(self, request):
         try:

@@ -7,6 +7,8 @@ urlpatterns = [
     path('tagsAtypes/', views.TypeTagView.as_view()),
     # 背景图上传接口
     path('bgImg/', views.BlogBgImgView.as_view()),
+    # 文章图上传接口
+    path('articleImg/', views.BlogArticleImgView.as_view()),
     path('articlesSu/', views.ArticleSuperView.as_view()),  # 这条路由规则分别表示get获取所有数据，以及post添加数据
     path('articles/', views.ArticleView.as_view()),     # 这条路由规则分别表示get获取所有数据，以及post添加数据
     path('articles/<aid>/', views.ArticleView.as_view()),      # 这条路由规则分别表示put修改数据，delete删除数据

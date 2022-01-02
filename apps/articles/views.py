@@ -66,6 +66,44 @@ class BlogBgImgView(AvatarUploadView, View):
         })
 
 
+class BlogArticleImgView(AvatarUploadView, View):
+    """
+        该接口仅用于upload组件上传文章图片时的接口
+        前端:
+            上传
+        后端：
+            请求：接受信息
+            路由： POST upload/articleImg/
+            响应；
+                JSON格式数据
+                {
+                code:0,                  # 状态码
+                msg: ok，                # 错误信息
+                data: {
+                        url: ''         # 头像的本地链接
+                    }
+                }
+        """
+
+    def post(self, request):
+        try:
+            fileInfo = request.FILES.getlist('file', None)
+            path, md5, type = self.pathParseAndMixin(fileInfo, 'blogArticleImg')
+            # 写入图像
+            with open(path, 'wb') as f:
+                for content in fileInfo[0].chunks():
+                    f.write(content)
+            url = 'http://localhost:8082/media/uploads/blogArticleImg/temp/' + md5.hexdigest() + type
+        except Exception as e:
+            return JsonResponse({'code': 500, 'msg': '图片上传失败，请尝试重新上传'})
+        return JsonResponse({
+            'code': 0,
+            'msg': 'ok',
+            'data': {
+                'url': url
+            }
+        })
+
 def getArticleList(id=None):
     if id:
         user = User.objects.get(id=id)
