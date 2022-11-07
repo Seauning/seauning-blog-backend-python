@@ -2,6 +2,8 @@ import json
 
 from django.utils import timezone
 from django.views import View
+from django.views.decorators.csrf import csrf_exempt
+
 from apps.articles.models import Article, Type, Tag, ArticleTag
 from django.http import JsonResponse
 from ..users.views import AvatarUploadView
@@ -12,8 +14,10 @@ class TypeTagView(View):
     # 这个request参数必须加上，在前端发送axios请求时会带上request
     def get(self, request):
         try:
-            tags = [{'name': tag.name, 'value': tag.value, 'count': tag.tag_art.all().count()} for tag in Tag.objects.all()]
-            types = [{'name': type.name, 'value': type.value, 'count': type.type_art.all().count() } for type in Type.objects.all()]
+            tags = [{'name': tag.name, 'value': tag.value, 'count': tag.tag_art.all().count()} for tag in
+                    Tag.objects.all()]
+            types = [{'name': type.name, 'value': type.value, 'count': type.type_art.all().count()} for type in
+                     Type.objects.all()]
             data = {'tags': tags, 'types': types}
         except Exception as e:
             return JsonResponse({
@@ -123,7 +127,7 @@ def getArticleList(id=None):
     if id:  # 表明当前是查询该作者的所有文章
         user = User.objects.get(id=id)
         articles = user.user_art.all()
-    else:    # 表明当前是查询所有文章
+    else:  # 表明当前是查询所有文章
         articles = Article.objects.all().order_by('-views')
     articleList = [
         {
@@ -206,6 +210,9 @@ class SigArticleView(View):
             data:{},          # 文章
             }
     """
+
+    # 取消当前函数防跨站请求伪造功能
+    @csrf_exempt
     def get(self, request, aid):
         try:
             q = Article.objects.get(id=aid)
@@ -249,6 +256,8 @@ class SigArticleView(View):
             msg: ok，        # 错误信息
             }
     """
+
+    @csrf_exempt
     def post(self, request):
         bodyDict = json.loads(request.body)
         aid = bodyDict['id']
@@ -308,6 +317,7 @@ class ArticleView(View):
             tagObj = tagObj[0]
         return newObj, tagObj
 
+    @csrf_exempt
     def get(self, request):
         try:
             articleList = getArticleList()
@@ -321,7 +331,6 @@ class ArticleView(View):
             'msg': 'ok',
             'data': articleList
         })
-
 
     """
         添加文章
@@ -410,18 +419,18 @@ class ArticleView(View):
             tagList = [tagObj]
             # 2.修改该文章
             article.tag.clear()  # 清空该文章已经有的标签
-            article.tag.add(*tagList)     # 给该篇文章添加新的标签
+            article.tag.add(*tagList)  # 给该篇文章添加新的标签
             # 因为文章和标签时多对多关系，通过这两个模型的关联表进行修改
-            articleTags = ArticleTag.objects.filter(article_id=aid)   # 先找出所有需要修改的记录
+            articleTags = ArticleTag.objects.filter(article_id=aid)  # 先找出所有需要修改的记录
             # 2.重新添加多对多联系
             # 这里多对多的数据更改有点迷糊了（?????)
             for articleTag in articleTags:
                 # 此处的意思是，将多对多表中该文章的所有记录对应的文字实例全部更新
                 for (key, v) in newObj.items():
-                    setattr(articleTag.article, key, v)     # setattr是python中内置的一个修改实例属性值(不一定存在)的方法
+                    setattr(articleTag.article, key, v)  # setattr是python中内置的一个修改实例属性值(不一定存在)的方法
                 # 将修改时间变为当前(因为我们在模型定义时重构了save函数，自动更新修改时间，所以此处省略此行代码)
                 # articleTag.article.modifiedDate = timezone.localtime()
-                articleTag.article.save()   # 记得在修改每各字段的同时，在其末尾保存修改(这里修改的是文章)
+                articleTag.article.save()  # 记得在修改每各字段的同时，在其末尾保存修改(这里修改的是文章)
         except Exception as e:
             return JsonResponse({
                 'code': 500,

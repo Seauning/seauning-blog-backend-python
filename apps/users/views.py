@@ -5,6 +5,8 @@ import re
 import time
 import logging
 
+from django.views.decorators.csrf import csrf_exempt
+
 from blog_server import settings
 from django.views import View
 from apps.users.models import User
@@ -45,6 +47,7 @@ class UsernameCountView(View):
             }
     """
 
+    @csrf_exempt
     def get(self, request, username):
         """
         :param request: 请求对象
@@ -100,6 +103,7 @@ class PhoneCountView(View):
             }
     """
 
+    @csrf_exempt
     def get(self, request, phone):
         """
         :param request: 请求对象
@@ -140,6 +144,7 @@ class AvatarUploadView(View):
                 }
             }
     """
+
     def pathParseAndMixin(self, data, base):
         mediapath = settings.MEDIA_ROOT
         userpath = mediapath + '\\uploads\\{}\\temp\\'.format(base)
@@ -156,6 +161,7 @@ class AvatarUploadView(View):
         md5.update(avatarName.encode('utf-8'))
         return userpath + '{}'.format(md5.hexdigest() + avatarType), md5, avatarType
 
+    @csrf_exempt
     def post(self, request):
         try:
             avatarFileInfo = request.FILES.getlist('file', None)
@@ -211,6 +217,7 @@ class RegisterUserView(View):
             return 0
         return 1
 
+    @csrf_exempt
     def post(self, request):
         try:
             # 1.接收请求（JSON数据）
@@ -392,6 +399,7 @@ class UserLoginView(View):
             logger.error(e)
         return 1
 
+    @csrf_exempt
     def post(self, request):
         try:
             bodyDict = json.loads(request.body)

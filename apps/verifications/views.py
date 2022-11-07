@@ -4,6 +4,7 @@ from django.shortcuts import render
 
 # Create your views here.
 from django.views import View
+from django.views.decorators.csrf import csrf_exempt
 
 
 class ImgCodeView(View):
@@ -25,6 +26,7 @@ class ImgCodeView(View):
             }
     """
 
+    @csrf_exempt
     def get(self, request, uuid):
         # 1、接收路由中的uuid
         # 2、生成图片验证码和图片二进制
@@ -65,6 +67,7 @@ class SmsCodeView(View):
             }
     """
 
+    @csrf_exempt
     def smsCodeOpt(self, phone):
         try:
             # 1.生成短信验证码

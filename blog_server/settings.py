@@ -24,7 +24,7 @@ SECRET_KEY = 'wvmi2k#r+oc9s)71bd&9l*sp)5(5$3t4@ncw8ld1w7lx*b_xe6'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True  # True表示开发模型，在上线后应改为false
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'www.seauning.site']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'www.seauning.top']
 
 # Application definition
 
@@ -224,7 +224,7 @@ AUTH_USER_MODEL = 'users.User'
 CORS_ALLOWED_ORIGINS = (
     'http://127.0.0.1:8081',
     'http://localhost:8081',
-    'http://www.seauning.site:8081',
+    'http://www.seauning.top:8081',
 )
 # 允许携带cookie
 CORS_ALLOW_CREDENTIALS = True
